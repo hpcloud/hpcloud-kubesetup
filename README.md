@@ -13,23 +13,23 @@ This repository contains the code and instructions for the hpcloud-kubesetup ins
 
 	**Linux**
 
-		wget https://github.com/hpcloud/hpcloud-kubesetup/bin/linux/hpcloud-kubesetup_linux_amd64 -O /usr/local/bin/hpcloud-kubesetup
+		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_linux_amd64 -O /usr/local/bin/hpcloud-kubesetup
 		chmod +x /usr/local/bin/hpcloud-kubesetup
 	
 	**Mac**
 
-		wget https://github.com/hpcloud/hpcloud-kubesetup/bin/darwin/hpcloud-kubesetup_darwin_amd64 -O /usr/local/bin/hpcloud-kubesetup
+		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_darwin_amd64 -O /usr/local/bin/hpcloud-kubesetup
 		chmod +x /usr/local/bin/hpcloud-kubesetup
 		
 	**Windows**
 
-		wget https://github.com/hpcloud/hpcloud-kubesetup/bin/windows/hpcloud-kubesetup_windows_amd64.exe -O %temp%/hpcloud-kubesetup.exe
+		https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_windows_amd64.exe -O %temp%/hpcloud-kubesetup.exe
 	
 2. Download the default setup configuration file to create a 4 node Kubernetes cluster
 
 	**Linux, Mac, Windows**
 
-		wget https://github.com/hpcloud/kubesetup/blob/master/kubesetup.yml 
+		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/kubesetup.yml 
 		
 
 3. Log into your account and download the "OpenStack RC file" located on the Project\Access & Security panel inside the API Access tab. The [download button](https://a248.e.akamai.net/cdn.hpcloudsvc.com/ha4ca03ecf0c27c00f0c991360b263f06/prodaw2/rc-file.png) is on the top right corner.
