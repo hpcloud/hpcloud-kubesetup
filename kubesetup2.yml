@@ -1,0 +1,19 @@
+hosts:
+  kube-master:
+    ip: 10.0.0.40
+    ismaster: true
+    vm-image: CoreOS
+    vm-size: standard.medium
+  kube-minion-1:
+    ip: 10.0.0.41
+    ismaster: false
+    vm-image: CoreOS
+    vm-size: standard.small
+  kube-minion-2:
+    ip: 10.0.0.42
+    ismaster: false
+    vm-image: CoreOS
+    vm-size: standard.small
+
+sshkey: kube-key
+
