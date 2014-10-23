@@ -23,7 +23,7 @@ This repository contains the code and instructions for the hpcloud-kubesetup ins
 		
 	**Windows**
 
-		https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_windows_amd64.exe -O %temp%/hpcloud-kubesetup.exe
+		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_windows_amd64.exe -O %temp%/hpcloud-kubesetup.exe
 	
 2. Download the default setup configuration file to create a 4 node Kubernetes cluster
 
