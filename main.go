@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -90,6 +91,10 @@ func main() {
 	if err != nil {
 		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 	}
+	if len(subnets) == 0 {
+		err = errors.New("subnet not found")
+		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+	}
 
 	ports, err := network.GetPorts(auth)
 	if err != nil {
@@ -154,6 +159,7 @@ func main() {
 			data["role"] = "minion"
 		}
 
+		data["masterip"] = getMasterIp(config.Nodes)
 		data["machines"] = getMachines(config.Nodes)
 		data["peers"] = getPeers(config.Nodes, v)
 		data["hostname"] = k
@@ -409,6 +415,19 @@ func getPeers(nodeList map[string]Node, self Node) string {
 
 	return csv.String()
 }
+
+func getMasterIp(nodeList map[string]Node) string  {
+
+	for _, v := range nodeList {
+
+		if v.IsMaster {
+				return v.IP
+		}
+	}
+
+	return ""
+}
+
 
 /*
 	CoreOS Cluster Discovery ID

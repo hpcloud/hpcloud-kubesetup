@@ -1,205 +1,314 @@
 package main
 
 import (
-	"text/template"
+  "text/template"
 )
 
 /*
-	Adopted from https://github.com/kelseyhightower/kubeconfig/template.go
-	License: https://github.com/kelseyhightower/kubeconfig/blob/master/LICENSE
+  Adopted from https://github.com/kelseyhightower/kubeconfig/template.go
+  License: https://github.com/kelseyhightower/kubeconfig/blob/master/LICENSE
 
-	Copyright (c) 2014 Kelsey Hightower
+  Copyright (c) 2014 Kelsey Hightower
 */
 
 var nodeTmpl = template.Must(template.New("node").Parse(`#cloud-config
-
-hostname: {{.hostname}}
+---
+{{if eq .role "master"}}
+write_files:
+- path: /opt/bin/waiter.sh
+  owner: root
+  content: |
+    #! /usr/bin/bash
+    until curl http://127.0.0.1:4001/v2/machines; do sleep 2; done
 coreos:
-  etcd:
-    discovery: {{.discovery}}
-    name: {{.hostname}}
-    addr: {{.ip}}:4001
-    bind-addr: 0.0.0.0
-    peer-addr: {{.ip}}:7001
-{{if ne .role "master"}}
-    peers: {{.peers}}
-{{end}}
-    peer-heartbeat-interval: 250
-    peer-election-timeout: 1000
   units:
-    - name: static.network
-      command: start
-      content: |
-        [Match]
-        Name=ens33
-
-        [Network]
-        Address={{.ip}}/24
-        DNS={{.dns}}
-        Gateway={{.gateway}}
-    - name: cbr0.netdev
-      command: start
-      content: |
-        [NetDev]
-        Kind=bridge
-        Name=cbr0
-    - name: cbr0.network
-      command: start
-      content: |
-        [Match]
-        Name=cbr0
-
-        [Network]
-        Address={{.subnet}}
-
-        [Route]
-        Destination=10.0.0.0/8
-        Gateway=0.0.0.0
-    - name: cbr0-interface.network
-      command: start
-      content: |
-        [Match]
-        Name=ens34
-
-        [Network]
-        Bridge=cbr0
-    - name: nat.service
+    - name: setup-network-environment.service
       command: start
       content: |
         [Unit]
-        Description=NAT non container traffic
+        Description=Setup Network Environment
+        Documentation=https://github.com/kelseyhightower/setup-network-environment
+        Requires=network-online.target
+        After=network-online.target
 
         [Service]
-        ExecStart=/usr/sbin/iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE ! -d 10.0.0.0/8
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/setup-network-environment
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/setup-network-environment
+        ExecStart=/opt/bin/setup-network-environment
         RemainAfterExit=yes
         Type=oneshot
     - name: etcd.service
       command: start
+      content: |
+        [Unit]
+        Description=etcd
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        User=etcd
+        PermissionsStartOnly=true
+        ExecStart=/usr/bin/etcd \
+        --name ${DEFAULT_IPV4} \
+        --addr ${DEFAULT_IPV4}:4001 \
+        --bind-addr 0.0.0.0 \
+        --cluster-active-size 1 \
+        --data-dir /var/lib/etcd \
+        --http-read-timeout 86400 \
+        --peer-addr ${DEFAULT_IPV4}:7001 \
+        --snapshot true
+        Restart=always
+        RestartSec=10s
+    - name: fleet.socket
+      command: start
+      content: |
+        [Socket]
+        ListenStream=/var/run/fleet.sock
     - name: fleet.service
       command: start
-    - name: docker.service
-      command: start
       content: |
         [Unit]
-        After=network.target
-        Description=Docker Application Container Engine
-        Documentation=http://docs.docker.io
+        Description=fleet daemon
+        Wants=etcd.service
+        After=etcd.service
+        Wants=fleet.socket
+        After=fleet.socket
 
         [Service]
-        ExecStartPre=/bin/mount --make-rprivate /
-        ExecStart=/usr/bin/docker -d -s=btrfs -H fd:// -b cbr0 --iptables=false
-
-        [Install]
-        WantedBy=multi-user.target
-    - name: download-kubernetes.service
+        Environment="FLEET_ETCD_SERVERS=http://127.0.0.1:4001"
+        Environment="FLEET_METADATA=role=master"
+        ExecStart=/usr/bin/fleetd
+        Restart=always
+        RestartSec=10s
+    - name: etcd-waiter.service
       command: start
       content: |
         [Unit]
+        Description=etcd waiter
+        Wants=network-online.target
+        Wants=etcd.service
+        After=etcd.service
         After=network-online.target
-{{if eq .role "master"}}
-        Before=apiserver.service
-        Before=controller-manager.service
-{{end}}
-        Before=kubelet.service
-        Before=proxy.service
-        Description=Download Kubernetes Binaries
-        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=network-online.target
+        Before=flannel.service
+        Before=setup-network-environment.service
 
         [Service]
-{{if eq .role "master"}}
-        ExecStart=/usr/bin/wget -N -P /opt/bin http://storage.googleapis.com/kubernetes/apiserver
-        ExecStart=/usr/bin/wget -N -P /opt/bin http://storage.googleapis.com/kubernetes/controller-manager
-        ExecStart=/usr/bin/wget -N -P /opt/bin http://storage.googleapis.com/kubernetes/kubecfg
-{{end}}
-        ExecStart=/usr/bin/wget -N -P /opt/bin http://storage.googleapis.com/kubernetes/kubelet
-        ExecStart=/usr/bin/wget -N -P /opt/bin http://storage.googleapis.com/kubernetes/proxy
-{{if eq .role "master"}}
-        ExecStart=/usr/bin/chmod +x /opt/bin/apiserver
-        ExecStart=/usr/bin/chmod +x /opt/bin/controller-manager
-        ExecStart=/usr/bin/chmod +x /opt/bin/kubecfg
-{{end}}
-        ExecStart=/usr/bin/chmod +x /opt/bin/kubelet
-        ExecStart=/usr/bin/chmod +x /opt/bin/proxy
-        RemainAfterExit=yes
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/waiter.sh
+        ExecStart=/usr/bin/bash /opt/bin/waiter.sh
+        RemainAfterExit=true
         Type=oneshot
-{{if eq .role "master"}}
-    - name: apiserver.service
+    - name: flannel.service
       command: start
       content: |
         [Unit]
-        ConditionFileIsExecutable=/opt/bin/apiserver
+        Wants=etcd-waiter.service
+        After=etcd-waiter.service
+        Requires=etcd.service
+        After=etcd.service
+        After=network-online.target
+        Wants=network-online.target
+        Description=flannel is an etcd backed overlay network for containers
+
+        [Service]
+        Type=notify
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/flanneld
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/flanneld
+        ExecStartPre=/usr/bin/etcdctl mk /coreos.com/network/config '{"Network":"10.244.0.0/16", "Backend": {"Type": "vxlan"}}'
+        ExecStart=/opt/bin/flanneld
+    - name: kube-apiserver.service
+      command: start
+      content: |
+        [Unit]
         Description=Kubernetes API Server
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=etcd.service
+        After=etcd.service
 
         [Service]
-        ExecStart=/opt/bin/apiserver \
-        --address=127.0.0.1 \
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-apiserver
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-apiserver
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubecfg
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubecfg
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubectl
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubectl
+        ExecStart=/opt/bin/kube-apiserver \
+        --address=0.0.0.0 \
         --port=8080 \
+        --portal_net=10.100.0.0/16 \
         --etcd_servers=http://127.0.0.1:4001 \
-        --machines={{.machines}} \
+        --public_address_override=$private_ipv4 \
         --logtostderr=true
         Restart=always
-        RestartSec=2
-
-        [Install]
-        WantedBy=multi-user.target
-    - name: controller-manager.service
+        RestartSec=10
+    - name: kube-controller-manager.service
       command: start
       content: |
         [Unit]
-        ConditionFileIsExecutable=/opt/bin/controller-manager
         Description=Kubernetes Controller Manager
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=kube-apiserver.service
+        After=kube-apiserver.service
 
         [Service]
-        ExecStart=/opt/bin/controller-manager \
-        --etcd_servers=http://127.0.0.1:4001 \
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-controller-manager
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-controller-manager
+        ExecStart=/opt/bin/kube-controller-manager \
         --master=127.0.0.1:8080 \
         --logtostderr=true
         Restart=always
-        RestartSec=2
-
-        [Install]
-        WantedBy=multi-user.target
-{{end}}
-    - name: kubelet.service
+        RestartSec=10
+    - name: kube-scheduler.service
       command: start
       content: |
         [Unit]
-        ConditionFileIsExecutable=/opt/bin/kubelet
-        Description=Kubernetes Kubelet
+        Description=Kubernetes Scheduler
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=kube-apiserver.service
+        After=kube-apiserver.service
 
         [Service]
-        ExecStart=/opt/bin/kubelet \
-        --address=0.0.0.0 \
-        --port=10250 \
-        --hostname_override={{.ip}} \
-        --etcd_servers=http://127.0.0.1:4001 \
-        --logtostderr=true
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-scheduler
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-scheduler
+        ExecStart=/opt/bin/kube-scheduler --master=127.0.0.1:8080
         Restart=always
-        RestartSec=2
-
-        [Install]
-        WantedBy=multi-user.target
-    - name: proxy.service
+        RestartSec=10
+    - name: kube-register.service
       command: start
       content: |
         [Unit]
-        ConditionFileIsExecutable=/opt/bin/proxy
-        Description=Kubernetes Proxy
-        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Description=Kubernetes Registration Service
+        Documentation=https://github.com/kelseyhightower/kube-register
+        Requires=kube-apiserver.service
+        After=kube-apiserver.service
+        Requires=fleet.service
+        After=fleet.service
 
         [Service]
-        ExecStart=/opt/bin/proxy --etcd_servers=http://127.0.0.1:4001 --logtostderr=true
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/kube-register
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-register
+        ExecStart=/opt/bin/kube-register \
+        --metadata=role=node \
+        --fleet-endpoint=unix:///var/run/fleet.sock \
+        --api-endpoint=http://127.0.0.1:8080
         Restart=always
-        RestartSec=2
-
-        [Install]
-        WantedBy=multi-user.target
+        RestartSec=10
   update:
     group: alpha
     reboot-strategy: off
 ssh_authorized_keys:
-    - {{.sshkey}}`))
+   - {{.sshkey}}))
+{{end}}
+{{if eq .role "minion"}}
+coreos:
+  units:
+    - name: etcd.service
+      mask: true
+    - name: fleet.service
+      command: start
+      content: |
+        [Unit]
+        Description=fleet daemon
+        Wants=fleet.socket
+        After=fleet.socket
+
+        [Service]
+        Environment="FLEET_ETCD_SERVERS=http://{{.masterip}}:4001"
+        Environment="FLEET_METADATA=role=node"
+        ExecStart=/usr/bin/fleetd
+        Restart=always
+        RestartSec=10s
+    - name: flannel.service
+      command: start
+      content: |
+        [Unit]
+        After=network-online.target
+        Wants=network-online.target
+        Description=flannel is an etcd backed overlay network for containers
+
+        [Service]
+        Type=notify
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/flanneld
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/flanneld
+        ExecStart=/opt/bin/flanneld -etcd-endpoints http://{{.masterip}}:4001
+    - name: docker.service
+      command: start
+      content: |
+        [Unit]
+        After=flannel.service
+        Wants=flannel.service
+        Description=Docker Application Container Engine
+        Documentation=http://docs.docker.io
+
+        [Service]
+        EnvironmentFile=/run/flannel/subnet.env
+        ExecStartPre=/bin/mount --make-rprivate /
+        ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} -s=overlay -H fd://
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: setup-network-environment.service
+      command: start
+      content: |
+        [Unit]
+        Description=Setup Network Environment
+        Documentation=https://github.com/kelseyhightower/setup-network-environment
+        Requires=network-online.target
+        After=network-online.target
+
+        [Service]
+        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/setup-network-environment
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/setup-network-environment
+        ExecStart=/opt/bin/setup-network-environment
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: kube-proxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Proxy
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+
+        [Service]
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-proxy
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
+        ExecStart=/opt/bin/kube-proxy \
+        --etcd_servers=http://{{.masterip}}:4001 \
+        --logtostderr=true
+        Restart=always
+        RestartSec=10
+    - name: kube-kubelet.service
+      command: start
+      content: |
+        [Unit]
+        Description=Kubernetes Kubelet
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=setup-network-environment.service
+        After=setup-network-environment.service
+
+        [Service]
+        EnvironmentFile=/etc/network-environment
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubelet
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
+        ExecStart=/opt/bin/kubelet \
+        --address=0.0.0.0 \
+        --port=10250 \
+        --hostname_override={{.ip}} \
+        --etcd_servers=http://{{.masterip}}:4001 \
+        --logtostderr=true
+        Restart=always
+        RestartSec=10
+  update:
+    group: alpha
+    reboot-strategy: off
+  ssh_authorized_keys:
+    - {{.sshkey}}))
+{{end}}
+`))
