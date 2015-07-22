@@ -1,7 +1,7 @@
 package main
 
 import (
-  "text/template"
+	"text/template"
 )
 
 /*
@@ -10,138 +10,128 @@ import (
 
   Copyright (c) 2014 Kelsey Hightower
 */
+var masterTmpl = template.Must(template.New("node").Parse(`#cloud-config
 
-var nodeTmpl = template.Must(template.New("node").Parse(`#cloud-config
----
-{{if eq .role "master"}}
 write_files:
-- path: /opt/bin/waiter.sh
-  owner: root
-  content: |
-    #! /usr/bin/bash
-    until curl http://127.0.0.1:4001/v2/machines; do sleep 2; done
+  - path: /opt/bin/waiter.sh
+    owner: root
+    permissions: 0755
+    content: |
+      #! /usr/bin/bash
+      until curl http://127.0.0.1:2379/v2/machines; do sleep 2; done
+
 coreos:
+  etcd2:
+    name: master
+    initial-cluster-token: k8s_etcd
+    initial-cluster: master=http://{{.ip}}:2380
+    listen-peer-urls: http://{{.ip}}:2380,http://localhost:2380
+    initial-advertise-peer-urls: http://{{.ip}}:2380
+    listen-client-urls: http://{{.ip}}:2379,http://localhost:2379
+    advertise-client-urls: http://{{.ip}}:2379
+  fleet:
+    etcd_servers: http://localhost:2379
+    metadata: k8srole=master
+  flannel:
+    etcd_endpoints: http://localhost:2379
+  locksmithd:
+    endpoint: http://localhost:2379
   units:
-    - name: setup-network-environment.service
+    - name: etcd2.service
       command: start
-      content: |
-        [Unit]
-        Description=Setup Network Environment
-        Documentation=https://github.com/kelseyhightower/setup-network-environment
-        Requires=network-online.target
-        After=network-online.target
-
-        [Service]
-        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/setup-network-environment
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/setup-network-environment
-        ExecStart=/opt/bin/setup-network-environment
-        RemainAfterExit=yes
-        Type=oneshot
-    - name: etcd.service
-      command: start
-      content: |
-        [Unit]
-        Description=etcd
-        Requires=setup-network-environment.service
-        After=setup-network-environment.service
-
-        [Service]
-        EnvironmentFile=/etc/network-environment
-        User=etcd
-        PermissionsStartOnly=true
-        ExecStart=/usr/bin/etcd \
-        --name ${DEFAULT_IPV4} \
-        --addr ${DEFAULT_IPV4}:4001 \
-        --bind-addr 0.0.0.0 \
-        --cluster-active-size 1 \
-        --data-dir /var/lib/etcd \
-        --http-read-timeout 86400 \
-        --peer-addr ${DEFAULT_IPV4}:7001 \
-        --snapshot true
-        Restart=always
-        RestartSec=10s
-    - name: fleet.socket
-      command: start
-      content: |
-        [Socket]
-        ListenStream=/var/run/fleet.sock
     - name: fleet.service
       command: start
-      content: |
-        [Unit]
-        Description=fleet daemon
-        Wants=etcd.service
-        After=etcd.service
-        Wants=fleet.socket
-        After=fleet.socket
-
-        [Service]
-        Environment="FLEET_ETCD_SERVERS=http://127.0.0.1:4001"
-        Environment="FLEET_METADATA=role=master"
-        ExecStart=/usr/bin/fleetd
-        Restart=always
-        RestartSec=10s
-    - name: etcd-waiter.service
+    - name: etcd2-waiter.service
       command: start
       content: |
         [Unit]
         Description=etcd waiter
         Wants=network-online.target
-        Wants=etcd.service
-        After=etcd.service
+        Wants=etcd2.service
+        After=etcd2.service
         After=network-online.target
-        Before=flannel.service
-        Before=setup-network-environment.service
+        Before=flanneld.service fleet.service locksmithd.service
 
         [Service]
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/waiter.sh
         ExecStart=/usr/bin/bash /opt/bin/waiter.sh
         RemainAfterExit=true
         Type=oneshot
-    - name: flannel.service
+    - name: flanneld.service
+      command: start
+      drop-ins:
+        - name: 50-network-config.conf
+          content: |
+            [Service]
+            ExecStartPre=-/usr/bin/etcdctl mk /coreos.com/network/config '{"Network": "10.244.0.0/16", "Backend": {"Type": "vxlan"}}'
+    - name: docker-cache.service
       command: start
       content: |
         [Unit]
-        Wants=etcd-waiter.service
-        After=etcd-waiter.service
-        Requires=etcd.service
-        After=etcd.service
-        After=network-online.target
-        Wants=network-online.target
-        Description=flannel is an etcd backed overlay network for containers
+        Description=Docker cache proxy
+        Requires=early-docker.service
+        After=early-docker.service
+        Before=early-docker.target
 
         [Service]
-        Type=notify
-        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/flanneld
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/flanneld
-        ExecStartPre=/usr/bin/etcdctl mk /coreos.com/network/config '{"Network":"10.244.0.0/16", "Backend": {"Type": "vxlan"}}'
-        ExecStart=/opt/bin/flanneld
+        Restart=always
+        TimeoutStartSec=0
+        RestartSec=5
+        Environment=TMPDIR=/var/tmp/
+        Environment=DOCKER_HOST=unix:///var/run/early-docker.sock
+        ExecStartPre=-/usr/bin/docker kill docker-registry
+        ExecStartPre=-/usr/bin/docker rm docker-registry
+        ExecStartPre=/usr/bin/docker pull quay.io/devops/docker-registry:latest
+        # GUNICORN_OPTS is an workaround for
+        # https://github.com/docker/docker-registry/issues/892
+        ExecStart=/usr/bin/docker run --rm --net host --name docker-registry \
+            -e STANDALONE=false \
+            -e GUNICORN_OPTS=[--preload] \
+            -e MIRROR_SOURCE=https://registry-1.docker.io \
+            -e MIRROR_SOURCE_INDEX=https://index.docker.io \
+            -e MIRROR_TAGS_CACHE_TTL=1800 \
+            quay.io/devops/docker-registry:latest
+    - name: docker.service
+      drop-ins:
+        - name: 51-docker-mirror.conf
+          content: |
+            [Unit]
+            # making sure that docker-cache is up and that flanneld finished
+            # startup, otherwise containers won't land in flannel's network...
+            Requires=docker-cache.service
+            After=docker-cache.service
+
+            [Service]
+            Environment=DOCKER_OPTS='--registry-mirror=http://{{.ip}}:5000'
+    - name: get-kubectl.service
+      command: start
+      content: |
+        [Unit]
+        Description=Get kubectl client tool
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+        Requires=network-online.target
+        After=network-online.target
+
+        [Service]
+        ExecStart=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl
+        ExecStart=/usr/bin/chmod +x /opt/bin/kubectl
+        Type=oneshot
+        RemainAfterExit=true
     - name: kube-apiserver.service
       command: start
       content: |
         [Unit]
         Description=Kubernetes API Server
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=etcd.service
-        After=etcd.service
+        Requires=etcd2-waiter.service
+        After=etcd2-waiter.service
 
         [Service]
-        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-apiserver
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kube-apiserver
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-apiserver
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubecfg
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubecfg
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubectl
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubectl
         ExecStart=/opt/bin/kube-apiserver \
-        --address=0.0.0.0 \
-        --port=8080 \
-        --portal_net=10.100.0.0/16 \
-        --etcd_servers=http://127.0.0.1:4001 \
-        --public_address_override=$private_ipv4 \
-        --logtostderr=true
+        --insecure-bind-address=0.0.0.0 \
+        --service-cluster-ip-range=10.100.0.0/16 \
+        --etcd-servers=http://localhost:2379
         Restart=always
         RestartSec=10
     - name: kube-controller-manager.service
@@ -154,11 +144,10 @@ coreos:
         After=kube-apiserver.service
 
         [Service]
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-controller-manager
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kube-controller-manager
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-controller-manager
         ExecStart=/opt/bin/kube-controller-manager \
-        --master=127.0.0.1:8080 \
-        --logtostderr=true
+        --master=127.0.0.1:8080
         Restart=always
         RestartSec=10
     - name: kube-scheduler.service
@@ -171,9 +160,10 @@ coreos:
         After=kube-apiserver.service
 
         [Service]
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-scheduler
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kube-scheduler
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-scheduler
-        ExecStart=/opt/bin/kube-scheduler --master=127.0.0.1:8080
+        ExecStart=/opt/bin/kube-scheduler \
+        --master=127.0.0.1:8080
         Restart=always
         RestartSec=10
     - name: kube-register.service
@@ -182,16 +172,14 @@ coreos:
         [Unit]
         Description=Kubernetes Registration Service
         Documentation=https://github.com/kelseyhightower/kube-register
-        Requires=kube-apiserver.service
-        After=kube-apiserver.service
-        Requires=fleet.service
-        After=fleet.service
+        Requires=kube-apiserver.service fleet.service
+        After=kube-apiserver.service fleet.service
 
         [Service]
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/kube-register
+        ExecStartPre=-/usr/bin/wget -nc -O /opt/bin/kube-register https://github.com/kelseyhightower/kube-register/releases/download/v0.0.3/kube-register-0.0.3-linux-amd64
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-register
         ExecStart=/opt/bin/kube-register \
-        --metadata=role=node \
+        --metadata=k8srole=node \
         --fleet-endpoint=unix:///var/run/fleet.sock \
         --api-endpoint=http://127.0.0.1:8080
         Restart=always
@@ -199,116 +187,92 @@ coreos:
   update:
     group: alpha
     reboot-strategy: off
+
 ssh_authorized_keys:
-   - {{.sshkey}}))
-{{end}}
-{{if eq .role "minion"}}
+    - {{.sshkey}}`))
+
+var nodeTmpl = template.Must(template.New("node").Parse(`#cloud-config
+
+write_files:
+  - path: /opt/bin/wupiao
+    owner: root
+    permissions: 0755
+    content: |
+      #!/bin/bash
+      # [w]ait [u]ntil [p]ort [i]s [a]ctually [o]pen
+      [ -n "$1" ] && [ -n "$2" ] && while ! curl --output /dev/null \
+        --silent --head --fail \
+        http://${1}:${2}; do sleep 1 && echo -n .; done;
+      exit $?
+
 coreos:
+  etcd2:
+    listen-client-urls: http://localhost:2379
+    advertise-client-urls: http://0.0.0.0:2379
+    initial-cluster: master=http://{{.master}}:2380
+    proxy: on
+  fleet:
+    etcd_servers: http://localhost:2379
+    metadata: k8srole=node
+  flannel:
+    etcd_endpoints: http://localhost:2379
+  locksmithd:
+    endpoint: http://localhost:2379
   units:
-    - name: etcd.service
-      mask: true
+    - name: etcd2.service
+      command: start
     - name: fleet.service
       command: start
-      content: |
-        [Unit]
-        Description=fleet daemon
-        Wants=fleet.socket
-        After=fleet.socket
-
-        [Service]
-        Environment="FLEET_ETCD_SERVERS=http://{{.masterip}}:4001"
-        Environment="FLEET_METADATA=role=node"
-        ExecStart=/usr/bin/fleetd
-        Restart=always
-        RestartSec=10s
-    - name: flannel.service
+    - name: flanneld.service
       command: start
-      content: |
-        [Unit]
-        After=network-online.target
-        Wants=network-online.target
-        Description=flannel is an etcd backed overlay network for containers
-
-        [Service]
-        Type=notify
-        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/flanneld
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/flanneld
-        ExecStart=/opt/bin/flanneld -etcd-endpoints http://{{.masterip}}:4001
     - name: docker.service
       command: start
-      content: |
-        [Unit]
-        After=flannel.service
-        Wants=flannel.service
-        Description=Docker Application Container Engine
-        Documentation=http://docs.docker.io
-
-        [Service]
-        EnvironmentFile=/run/flannel/subnet.env
-        ExecStartPre=/bin/mount --make-rprivate /
-        ExecStart=/usr/bin/docker -d --bip=${FLANNEL_SUBNET} --mtu=${FLANNEL_MTU} -s=overlay -H fd://
-
-        [Install]
-        WantedBy=multi-user.target
-    - name: setup-network-environment.service
+      drop-ins:
+        - name: 50-docker-mirror.conf
+          content: |
+            [Service]
+            Environment=DOCKER_OPTS='--registry-mirror=http://{{.master}}:5000'
+    - name: kubelet.service
       command: start
       content: |
         [Unit]
-        Description=Setup Network Environment
-        Documentation=https://github.com/kelseyhightower/setup-network-environment
+        Description=Kubernetes Kubelet
+        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
         Requires=network-online.target
         After=network-online.target
 
         [Service]
-        ExecStartPre=-/usr/bin/mkdir -p /opt/bin
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/k8s/setup-network-environment
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/setup-network-environment
-        ExecStart=/opt/bin/setup-network-environment
-        RemainAfterExit=yes
-        Type=oneshot
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubelet
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
+        # wait for kubernetes master to be up and ready
+        ExecStartPre=/opt/bin/wupiao {{.master}} 8080
+        ExecStart=/opt/bin/kubelet \
+        --api-servers={{.master}}:8080 \
+        --hostname-override={{.ip}}
+        Restart=always
+        RestartSec=10
     - name: kube-proxy.service
       command: start
       content: |
         [Unit]
         Description=Kubernetes Proxy
         Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=setup-network-environment.service
-        After=setup-network-environment.service
+        Requires=network-online.target
+        After=network-online.target
 
         [Service]
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kube-proxy
+        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kube-proxy
         ExecStartPre=/usr/bin/chmod +x /opt/bin/kube-proxy
+        # wait for kubernetes master to be up and ready
+        ExecStartPre=/opt/bin/wupiao {{.master}} 8080
         ExecStart=/opt/bin/kube-proxy \
-        --etcd_servers=http://{{.masterip}}:4001 \
-        --logtostderr=true
+        --master=http://{{.master}}:8080
         Restart=always
         RestartSec=10
-    - name: kube-kubelet.service
-      command: start
-      content: |
-        [Unit]
-        Description=Kubernetes Kubelet
-        Documentation=https://github.com/GoogleCloudPlatform/kubernetes
-        Requires=setup-network-environment.service
-        After=setup-network-environment.service
 
-        [Service]
-        EnvironmentFile=/etc/network-environment
-        ExecStartPre=/usr/bin/wget -N -P /opt/bin https://storage.googleapis.com/kubernetes-release/release/v0.9.1/bin/linux/amd64/kubelet
-        ExecStartPre=/usr/bin/chmod +x /opt/bin/kubelet
-        ExecStart=/opt/bin/kubelet \
-        --address=0.0.0.0 \
-        --port=10250 \
-        --hostname_override={{.ip}} \
-        --etcd_servers=http://{{.masterip}}:4001 \
-        --logtostderr=true
-        Restart=always
-        RestartSec=10
   update:
     group: alpha
     reboot-strategy: off
-  ssh_authorized_keys:
-    - {{.sshkey}}))
-{{end}}
-`))
+
+ssh_authorized_keys:
+    - {{.sshkey}}`))
