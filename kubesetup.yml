@@ -15,5 +15,6 @@ hosts:
     vm-image: CoreOS
     vm-size: standard.small
 
-sshkey: dlab-key
-network: dlab-net
+sshkey: kube-key
+network: kube-net
+availabilityZone: az2

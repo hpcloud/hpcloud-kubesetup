@@ -40,8 +40,7 @@ var (
 	subnets        []network.SubnetResponse
 	servers        []compute.Server
 	ports          []network.PortResponse
-	//flavors        []compute.Flavor
-	flavorMap map[string]string
+	flavorMap      map[string]string
 )
 
 type configContainer struct {
@@ -138,12 +137,13 @@ func main() {
 			Usage:  "Create Kubernetes cluster",
 			Action: installAction,
 		},
-
-		{
-			Name:   Status,
-			Usage:  "Status of Kubernetes cluster",
-			Action: statusAction,
-		},
+		/*
+			{
+				Name:   Status,
+				Usage:  "Status of Kubernetes cluster",
+				Action: statusAction,
+			},
+		*/
 		{
 			Name:   Uninstall,
 			Usage:  "Remove Kubernetes cluster",
@@ -255,7 +255,7 @@ func initTask(c *cli.Context) {
 	if err != nil {
 		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 	}
-	log.Printf("%-20s - %s\n", "token:", token)
+	log.Printf("%-20s - %s\n", "token", token)
 
 	computeService = compute.NewService(&authenticator)
 
@@ -265,41 +265,43 @@ func initTask(c *cli.Context) {
 
 	keypair, err = computeService.KeyPair(config.SSHKey)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get keypair", config.SSHKey, err.Error()))
 	}
 
 	var q = network.QueryParameters{Name: config.Network}
 	networks, err := networkService.QueryNetworks(q)
-	networkID := networks[0].ID
-
-	netwrk, err = networkService.Network(networkID)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get network by name", config.Network, err.Error()))
 	}
-	log.Printf("%-20s - %s\n", "network:", netwrk.ID)
+
+	netwrk, err = networkService.Network(networks[0].ID)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "getting network by id", networks[0].ID, err.Error()))
+	}
+	log.Printf("%-20s - %s\n", "network", netwrk.ID)
 
 	subnets, err = networkService.Subnets()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get subnets", err.Error()))
 	}
 
 	ports, err = networkService.Ports()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get ports", err.Error()))
 	}
 
 	sort.Sort(PortByName(ports))
 
 	servers, err = computeService.Servers()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get servers", err.Error()))
 	}
 
 	sort.Sort(ServerByName(servers))
 
 	flavors, err := computeService.Flavors()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get flavors", err.Error()))
 	}
 
 	flavorMap = make(map[string]string)
@@ -337,16 +339,6 @@ func uninstallTask(c *cli.Context) {
 			}
 
 			log.Printf("%-20s - %s %s\n", "delete port", v.Name, "COMPLETED")
-
-			log.Printf("%-20s - %s\n", "delete port2", v.Name)
-
-			err2 := networkService.DeletePort(v.ID)
-			if noErrorOn404(err2) != nil {
-				log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err2.Error()))
-			}
-
-			log.Printf("%-20s - %s %s\n", "delete port2", v.Name, "COMPLETED")
-
 		}
 	}
 }
@@ -357,7 +349,7 @@ func createCloudConfigTask(c *cli.Context) {
 
 	masterIP, err := getMasterIP(config.Nodes)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get master IP", err.Error()))
 	}
 
 	discovery := getDiscoveryKey()
@@ -381,15 +373,8 @@ func createCloudConfigTask(c *cli.Context) {
 		data["hostname"] = k
 		data["ip"] = v.IP
 		data["sshkey"] = keypair.PublicKey
-		//data["machines"] = getMachines(config.Nodes)
-		//data["peers"] = getPeers(config.Nodes, v)
-		//data["dns"] = subnets[0].GatewayIP
-		//data["gateway"] = subnets[0].GatewayIP
-		//data["subnet"] = fmt.Sprintf("10.244.%d.1/24", nodeID) // subnets.Subnets[0].CIDR
 
 		nodeID = nodeID + 1
-
-		fmt.Println("data node ", nodeID, data)
 
 		createCloudConfig(data)
 
@@ -428,9 +413,9 @@ func installTask(c *cli.Context) {
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
-		log.Printf("%-20s - %s\n", "image:", images[0].ID)
+		log.Printf("%-20s - %s\n", "image", images[0].ID)
 
-		log.Printf("%-20s - %s\n", "flavor:", flavorMap[config.Nodes[v].VMSize])
+		log.Printf("%-20s - %s\n", "flavor", flavorMap[config.Nodes[v].VMSize])
 
 		newServer := compute.ServerCreationParameters{}
 		newServer.Name = v
@@ -591,46 +576,6 @@ func getUserData(filename string) (encodedStr string, err error) {
 	return
 }
 
-/*
-func getMachines(nodeList map[string]configNode) string {
-
-	var csv bytes.Buffer
-
-	i := 0
-	for _, v := range nodeList {
-		csv.WriteString(v.IP)
-		if i < (len(nodeList) - 1) {
-			csv.WriteString(",")
-		}
-		i = i + 1
-	}
-
-	return csv.String()
-}
-*/
-/*
-func getPeers(nodeList map[string]configNode, self configNode) string {
-
-	var csv bytes.Buffer
-
-	i := 0
-	for _, v := range nodeList {
-
-		if v.IP == self.IP {
-			continue
-		}
-
-		csv.WriteString(v.IP + ":7001")
-		if i < (len(nodeList) - 2) {
-			csv.WriteString(",")
-		}
-		i = i + 1
-	}
-
-	return csv.String()
-}
-*/
-
 func getMasterIP(nodeList map[string]configNode) (string, error) {
 
 	for _, v := range nodeList {
@@ -663,58 +608,15 @@ func getDiscoveryKey() string {
 	return string(body)
 }
 
-/*
-func dumpRequestResponseToStdOut(request *http.Request, response *http.Response) {
-
-	fmt.Fprintln(os.Stdout, "-----------------------------------------------------------------")
-
-	log.Println("body", request.Body)
-
-	dumpRequestBytes, err := httputil.DumpRequest(request, true)
-	if err == nil {
-		fmt.Fprintln(os.Stdout, string(dumpRequestBytes))
-	}
-
-	dumpResponseBytes, err := httputil.DumpResponse(response, true)
-	if err == nil {
-		fmt.Fprintln(os.Stdout, string(dumpResponseBytes))
-	}
-
-	fmt.Fprintln(os.Stdout, "-----------------------------------------------------------------")
-}
-
-func newConnectorRequestor(debug bool) misc.Requester {
-	return &connectorRequester{debug: debug}
-}
-
-type connectorRequester struct {
-	debug bool
-}
-
-// Note: Using this way to debug request/responses since the flag in golang sdk
-// wasn't working for an unknown reason. I think this is because the misc packaged is initialized
-// twice and then the debug function isn't initialized on the right packaged, but not sure
-// how to resolve this issue.
-func (requestor *connectorRequester) SendRequest(request *http.Request) (*http.Response, error) {
-	response, err := http.DefaultClient.Do(request)
-	if requestor.debug {
-		dumpRequestResponseToStdOut(request, response)
-	}
-
-	return response, err
-}
-*/
 func noErrorOn404(err error) error {
 
 	if err != nil {
-
 		errStatusCode := err.(misc.HTTPStatus)
 		if errStatusCode.StatusCode != 404 {
-			fmt.Println("error found in noerroron404", err)
+			// fmt.Println("error found in noerroron404", err)
 			return err
 		}
 	}
-
 	return nil
 }
 

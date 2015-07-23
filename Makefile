@@ -6,7 +6,7 @@ DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
 GOPKGS=$(shell go list -f '{{.ImportPath}}' ./...)
 PKGSDIRS=$(shell go list -f '{{.Dir}}' ./...)
 VERSION=$(shell echo `whoami`-`git rev-parse --short HEAD`-`date -u +%Y%m%d%H%M%S`)
-DIST_FIND_BUILDS=find . -type d -mindepth 1 -exec
+DIST_FIND_BUILDS=find . -type d -mindepth 1 | cut -f2 -d "/"
 
 .PHONY: all dist format lint vet build test setup tools deps updatedeps bench clean
 .SILENT: all dist format lint vet build test setup tools deps updatedeps bench clean
@@ -42,10 +42,10 @@ build: #deps
 dist: build
 	@echo "$(OK_COLOR)==> Distro'ing$(NO_COLOR)"
 	cd build && \
-	$(DIST_FIND_BUILDS) cp ../LICENSE.md {} \; && \
-	$(DIST_FIND_BUILDS) cp ../README.md {}/README \; && \
-	$(DIST_FIND_BUILDS) cp ../kubesetup.yml {} \; && \
-	$(DIST_FIND_BUILDS) zip -qr {}-hpcloud-kubesetup {} \; && \
+	$(DIST_FIND_BUILDS) | xargs -I '{p}' -n1 cp ../LICENSE.md ./{p}/LICENSE && \
+	$(DIST_FIND_BUILDS) | xargs -I '{p}' -n1 cp ../README.md {p}/README && \
+	$(DIST_FIND_BUILDS) | xargs -I '{p}' -n1 cp ../kubesetup.yml {p} && \
+	$(DIST_FIND_BUILDS) | xargs -I '{p}' -n1 zip -qr ../bin/hpcloud-kubesetup-{p} {p} && \
 	cd ..
 
 test: #deps
