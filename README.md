@@ -58,7 +58,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Mac & Linux**
 
-Execute the OpenStack resource script. The script will ask you to enter your OpenStack password. All settings will be exported as environment variables.
+	Execute the OpenStack resource script. The script will ask you to enter your OpenStack password. All settings will be exported as environment variables.
 
 		source ./<your project name>-openrc.sh
 	
@@ -72,9 +72,9 @@ Execute the OpenStack resource script. The script will ask you to enter your Ope
 		declare -x OS_USERNAME="kube"
 
 	**Windows**
-
-Open the OpenStack resource script with a text editor such as Notepad++. Replace the variables with your configuration values. Then run this in your command prompt window.
-
+	
+	Open the OpenStack resource script with a text editor such as Notepad++. Replace the variables with your configuration values. Then run this in your command prompt window.
+	
 		set OS_AUTH_URL=<OS_AUTH_URL>
 		set OS_TENANT_ID=<OS_TENANT_ID>
 		set OS_TENANT_NAME=<OS_TENANT_NAME>
@@ -82,38 +82,36 @@ Open the OpenStack resource script with a text editor such as Notepad++. Replace
 		set OS_PASSWORD=<OS_PASSWORD>	
 		set OS_REGION_NAME=<OS_REGION_NAME>
 
+4. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created. 
 
-5. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created. 
-
-You will need to:
- * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key you want to use instead
- * Create or modify the network
- * Verify and update if needed the ip based on the ip range on your tenant
+	You will need to:
+	 * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key you want to use instead
+	 * Create or modify the network
+	 * Verify and update if needed the ip based on the ip range on your tenant
 
 	**kubesetup.yml**
-	```
-	hosts:
-	  kube-master:
-	    ip: 192.168.1.140
-	    ismaster: true
-	    vm-image: CoreOS
-	    vm-size: standard.medium
-	  kube-node-1:
-	    ip: 192.168.1.141
-	    ismaster: false
-	    vm-image: CoreOS
-	    vm-size: standard.small
-	  kube-node-2:
-	    ip: 192.168.1.142
-	    ismaster: false
-	    vm-image: CoreOS
-	    vm-size: standard.small
-	
-	sshkey: kube-key
-	network: kube-net
-	availabilityZone: az2
-	```
-	
+
+		hosts:
+		  kube-master:
+		    ip: 192.168.1.140
+		    ismaster: true
+		    vm-image: CoreOS
+		    vm-size: standard.medium
+		  kube-node-1:
+		    ip: 192.168.1.141
+		    ismaster: false
+		    vm-image: CoreOS
+		    vm-size: standard.small
+		  kube-node-2:
+		    ip: 192.168.1.142
+		    ismaster: false
+		    vm-image: CoreOS
+		    vm-size: standard.small
+		
+		sshkey: kube-key
+		network: kube-net
+		availabilityZone: az2
+
 6. Once your `kubesetup.yml` reflects the type of cluster you want to create, you can then execute the cluster installer:
 
 	**Mac & Linux**
