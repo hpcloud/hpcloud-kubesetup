@@ -7,47 +7,42 @@ This repository contains the code and instructions for the hpcloud-kubesetup ins
 1. A valid hpcloud.com account or valid credentials to your Helion OpenStack environment.
 2. CoreOS available as a guest image if using your own Helion OpenStack environment.
 3. A Linux, Mac, or Windows workstation with internet connectivity.
+4. Ensure your Helion OpenStack environment default network connection has port 22, 80, 8080 open (specific rules)
 
 ## Steps ##
-1. Download the hpcloud-kubesetup installer for your specific platform:
+1. Download an unzip the hpcloud-kubesetup installer for your specific platform:
 
 	**Linux**
 
-		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_linux_amd64 -O /usr/local/bin/hpcloud-kubesetup
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip -O /usr/local/bin/hpcloud-kubesetup.zip
 		chmod +x /usr/local/bin/hpcloud-kubesetup
 	
 	**Mac**
 
-		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_darwin_amd64 -O /usr/local/bin/hpcloud-kubesetup
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip -O /usr/local/bin/hpcloud-kubesetup.zip
 		chmod +x /usr/local/bin/hpcloud-kubesetup
 		
 	**Windows**
 
-		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/bin/hpcloud-kubesetup_windows_amd64.exe -O %temp%/hpcloud-kubesetup.exe
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip -O %temp%/hpcloud-kubesetup.zip
 	
-2. Download the default setup configuration file to create a 4 node Kubernetes cluster
+3. Download and copy the basic manifest file to the unzip to the location of the client. This default setup configuration file to create a 3 node Kubernetes cluster.
 
 	**Linux, Mac, Windows**
 
-		wget https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/kubesetup.yml 
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/kubesetup.yml
 		
 
 3. Log into your account and download the "OpenStack RC file" located on the Project\Access & Security panel inside the API Access tab. The [download button](https://a248.e.akamai.net/cdn.hpcloudsvc.com/ha4ca03ecf0c27c00f0c991360b263f06/prodaw2/rc-file.png) is on the top right corner.
 
-4. Execute the OpenStack resource script. The script will ask you to enter your OpenStack password. All settings will be exported as environment variables.
+4. Set environment variables 
 
-	**Linux**
+	**Mac & Linux**
+
+Execute the OpenStack resource script. The script will ask you to enter your OpenStack password. All settings will be exported as environment variables.
 
 		source ./<your project name>-openrc.sh
 	
-	**Mac**
-	
-		source ./<your project name>-openrc.sh
-		
-	**Windows**
-
-		Coming soon
-
 	To inspect what was exported, run `export | grep OS_`. You should see a similar result to:
 		
 		$ export | grep OS_
@@ -57,52 +52,55 @@ This repository contains the code and instructions for the hpcloud-kubesetup ins
 		declare -x OS_TENANT_NAME="kubernetes"
 		declare -x OS_USERNAME="kube"
 
-5. Update `kubesetup.yml` if needed. This file describes the setup of the cluster. By default, a cluster consisting of 5 nodes, 1 master node and 4 minion nodes, will be created. You will need to create a new ssh key named `kube-key` or modify `sshkey` to reflect the key you want to use instead.
+	**Windows**
+
+Open the OpenStack resource script with a text editor such as Notepad++. Replace the variables with your configuration variables. Then run this in your command prompt window.
+
+		set OS_AUTH_URL=OS_AUTH_URL
+		set OS_TENANT_ID=OS_TENANT_ID
+		set OS_TENANT_NAME=OS_TENANT_NAME
+		set OS_USERNAME=OS_USERNAME
+		set OS_PASSWORD=OS_PASSWORD	
+		set OS_REGION_NAME=OS_REGION_NAME
+
+
+5. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created. You will need to:
+ * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key you want to use instead
+ * Create or modify the network
+ * Verify and update if needed the ip based on the ip range on your tenant
 
 	*kubesetup.yml*
 
-	    hosts:
-	      kube-master:
-	    	ip: 10.0.0.40
-	    	ismaster: true
-	    	vm-image: CoreOS
-	    	vm-size: standard.medium
-	      kube-minion-1:
-	    	ip: 10.0.0.41
-		    ismaster: false
-		    vm-image: CoreOS
-		    vm-size: standard.small
-	      kube-minion-2:
-		    ip: 10.0.0.42
-		    ismaster: false
-		    vm-image: CoreOS
-		    vm-size: standard.small
-	      kube-minion-3:
-		    ip: 10.0.0.43
-		    ismaster: false
-		    vm-image: CoreOS
-		    vm-size: standard.small
-	      kube-minion-4:
-		    ip: 10.0.0.44
-		    ismaster: false
-		    vm-image: CoreOS
-		    vm-size: standard.small
+	hosts:
+	  kube-master:
+	    ip: 10.0.0.140
+	    ismaster: true
+	    vm-image: CoreOS
+	    vm-size: standard.medium
+  	kube-node-1:
+	    ip: 10.0.0.141
+	    ismaster: false
+	    vm-image: CoreOS
+	    vm-size: standard.small
+  	kube-node-2:
+	    ip: 10.0.0.142
+	    ismaster: false
+	    vm-image: CoreOS
+	    vm-size: standard.small
+	
+	sshkey: <my key>
+	network: <my network>
+	availabilityZone: az2
 
-		sshkey: kube-key
+6. Once your `kubesetup.yml` reflects the type of cluster you want to create, you can then execute the cluster installer:
 
-6. Once `kubesetup.yml` reflects the type of cluster you want to create, you can then execute the cluster installer:
+	**Mac & Linux**
 
-	**Linux**
-
-		/usr/local/bin/hpcloud-kubesetup
-
-	**Mac**
-		
-		./usr/local/bin/hpcloud-kubesetup
+		hpcloud-kubesetup install
 	
 	Windows
 
-		coming soon
+		hpcloud-kubesetup install
 
 
 	Once run, you should see the following results:
