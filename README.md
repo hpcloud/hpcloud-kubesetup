@@ -1,7 +1,9 @@
 hpcloud-kubesetup
 =================
 
-This repository contains the code and instructions for the hpcloud-kubesetup installer, which deploys a Kubernetes cluster to the HP Helion Public Cloud or to any HP Helion OpenStack environment. The process runs on your workstation, provisioning the cluster remotely.
+This repository contains the code and instructions for the hpcloud-kubesetup installer, which deploys a Kubernetes (1.0.1) cluster to the HP Helion Public Cloud or to any private HP Helion OpenStack environment (version 1.1 or later). 
+
+The installer process runs on your workstation, provisioning the cluster remotely.
 
 ## Prerequisites ##
 1. A valid hpcloud.com account or valid credentials to your Helion OpenStack environment.
@@ -10,24 +12,45 @@ This repository contains the code and instructions for the hpcloud-kubesetup ins
 4. Ensure your Helion OpenStack environment default network connection has port 22, 80, 8080 open (specific rules)
 
 ## Steps ##
-1. Download an unzip the hpcloud-kubesetup installer and manifest for your specific platform:
+1. Download and install the hpcloud-kubesetup installer and Kubernetes kubectl utility for your specific platform:
 
 	**Linux**
 
-		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip 
-		unzip hpcloud-kubesetup-linux.zip -d /usr/local/bin/
-		chmod +x /usr/local/bin/hpcloud-kubesetup
+		mkdir -p ~/kube
+		
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip \
+		-O ~/kube/hpcloud-kubesetup-linux.zip
+		unzip hpcloud-kubesetup-linux.zip -d ~/kube/
+		sudo mv ~/kube/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
+		
+		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl \
+		-O ~/kube/kubectl
+		sudo mv ~/kube/kubectl /usr/local/bin/kubectl
+		sudo chmod +x /usr/local/bin/kubectl
 	
 	**Mac**
 
-		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip 
-		unzip hpcloud-kubesetup-darwin.zip -d /usr/local/bin/
-		chmod +x /usr/local/bin/hpcloud-kubesetup
+		mkdir -p ~/kube
+		
+		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip \
+		-O ~/kube/hpcloud-kubesetup-darwin.zip
+		unzip hpcloud-kubesetup-darwin.zip -d ~/kube/
+		sudo mv ~/kube/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
+		
+		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/darwin/amd64/kubectl \
+		-O ~/kube/kubectl
+		sudo mv ~/kube/kubectl /usr/local/bin/kubectl
+		sudo chmod +x /usr/local/bin/kubectl
 		
 	**Windows**
 
 		download  https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip
 		Unzip hpcloud-kubesetup.zip with a zip file utility program 
+		
+		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe ^ 
+		-O ~/kube/kubectl.exe
 	
 2. Log into your account and download the "OpenStack RC file" located on the Project\Access & Security panel inside the API Access tab. The [download button](https://a248.e.akamai.net/cdn.hpcloudsvc.com/ha4ca03ecf0c27c00f0c991360b263f06/prodaw2/rc-file.png) is on the top right corner.
 
