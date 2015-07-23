@@ -23,3 +23,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# Generated CloudInit files
+kube-master.yml
+kube-node-*.yml

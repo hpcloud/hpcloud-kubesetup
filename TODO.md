@@ -8,3 +8,5 @@ TODO list hpcloud-kubesetup
 5. Send --debug output to separate output channel
 6. Use DHCP assigned network addresses for Nodes
 7. Determine master IP address based on network and first available IP in range
+8. Install kubectl on client which is running kubesetup
+9. Create the client ssh tunel to the master (ssh -f -nNT -L 8080:127.0.0.1:8080 core@<master-public-ip>)
