@@ -46,11 +46,12 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		
 	**Windows**
 
-		download  https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip
-		Unzip hpcloud-kubesetup.zip with a zip file utility program 
+		[Installation script](https://github.com/gertd/hpcloud-kubesetup/blob/master/windows/README.md)
 		
-		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe ^ 
-		-O ~/kube/kubectl.exe
+		For manual installation steps:
+		1. [Download](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip)
+		2. Unzip hpcloud-kubesetup.zip
+		3. [Download](https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe)
 	
 2. Log into your account and download the "OpenStack RC file" located on the Project\Access & Security panel inside the API Access tab. The [download button](https://a248.e.akamai.net/cdn.hpcloudsvc.com/ha4ca03ecf0c27c00f0c991360b263f06/prodaw2/rc-file.png) is on the top right corner.
 
