@@ -1,15 +1,18 @@
-hpcloud-kubesetup
-=================
+#hpcloud-kubesetup 
+##Deploying Kubernetes clusters to HP Helion OpenStack
+##====================================================
 
-This repository contains the code and instructions for the hpcloud-kubesetup installer, which deploys a Kubernetes (1.0.1) cluster to the HP Helion Public Cloud or to any private HP Helion OpenStack environment (version 1.1 or later). 
+This repository contains the code and instructions for the hpcloud-kubesetup installer tool. The hpcloud-kubesetup installer enables you to create and deploy Kubernetes (1.0.1) clusters on to your own private HP Helion OpenStack environment (version 1.1 or later) or to your hosted HP Helion Public Cloud account. 
 
 The installer process runs on your workstation, provisioning the cluster remotely.
 
 ## Prerequisites ##
-1. A valid hpcloud.com account or valid credentials to your Helion OpenStack environment.
-2. CoreOS available as a guest image if using your own Helion OpenStack environment.
-3. A Linux, Mac, or Windows workstation with internet connectivity.
-4. Ensure your Helion OpenStack environment default network connection has port 22, 80, 8080 open (specific rules)
+1. Credentials to your HP Helion OpenStack environment or HP Helion Public Cloud account.
+2. CoreOS version 653.0.0 or later loaded in to OpenStack glance  [(steps)](https://coreos.com/os/docs/latest/booting-on-openstack.html). Note: when deploying to a HP Helion Public Cloud account this prerquisite is already satisfied.
+3. An OpenStack project/tenant to deploy your Kubernetes cluster to. Note: when deploying to a HP Helion Public Cloud account, you can use the existing tenant.
+3. A private network within the OpenStack project/tenant, providingt network isolation [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh).
+4. Ingress TCP communication over ports 22 (SSH), 80, 443 and 8080 (kube-apiserver) by adding these rulese to the default OpenStack security group within the project [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/update-default-securitygroup.sh)
+5. A Linux, Mac, or Windows workstation with internet connectivity and connectivity to your HP Helion OpenStack environment.
 
 ## Steps ##
 1. Download and install the hpcloud-kubesetup installer and Kubernetes kubectl utility for your specific platform:
