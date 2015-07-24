@@ -75,7 +75,9 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Windows**
 	
-	Open the OpenStack resource script with a text editor such as Notepad++. Replace the variables with your configuration values. Then run this in your command prompt window.
+	Rename the downloaded <your project name>-openrc.sh file to <your project name>-openrc.bat
+	Open the <your project name>-openrc.bat file within an editor like notepad.
+	Replace the export statement with set statement, like shown below.
 	
 		set OS_AUTH_URL=<OS_AUTH_URL>
 		set OS_TENANT_ID=<OS_TENANT_ID>
@@ -83,13 +85,15 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		set OS_USERNAME=<OS_USERNAME>
 		set OS_PASSWORD=<OS_PASSWORD>	
 		set OS_REGION_NAME=<OS_REGION_NAME>
+		
+	Run the <your project name>-openrc.bat file inside the console window from which we will the remaining installer steops
 
 4. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created. 
 
 	You will need to:
-	 * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key you want to use instead
-	 * Create or modify the network
-	 * Verify and update if needed the ip based on the ip range on your tenant
+	 * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key name of an existing key pair inside OpenStack
+	 * Create the kube-net network [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh) or modify the network entry in the kubesetup.yml file to an existing private network inside the project/tenant you will be deploying to
+	 * Verify if specified IP address range is supported by your subnet. When using the create-private-network.sh script you can use the default values
 
 	**kubesetup.yml**
 
@@ -129,11 +133,11 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	
 	```	
 	>hpcloud-kubesetup.exe install
-	2015/07/23 12:06:23 config file          - kube-master {10.0.0.140 true CoreOS standard.medium }
-	2015/07/23 12:06:23 config file          - kube-node-1 {10.0.0.141 false CoreOS standard.small }
-	2015/07/23 12:06:23 config file          - kube-node-2 {10.0.0.142 false CoreOS standard.small }
+	2015/07/23 12:06:23 config file          - kube-master {192.168.1.140 true CoreOS standard.medium }
+	2015/07/23 12:06:23 config file          - kube-node-1 {192.168.1.141 false CoreOS standard.small }
+	2015/07/23 12:06:23 config file          - kube-node-2 {192.168.1.142 false CoreOS standard.small }
 	2015/07/23 12:06:23 config file          - SSHKey <redacted>
-	2015/07/23 12:06:23 config file          - Network CloudHorizonNetwork
+	2015/07/23 12:06:23 config file          - Network kube-net
 	2015/07/23 12:06:23 config file          - AvailabilityZone az2
 	2015/07/23 12:06:23 OS_AUTH_URL          -  <redacted>
 	2015/07/23 12:06:23 OS_TENANT_ID         -  <redacted>
@@ -152,26 +156,26 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	2015/07/23 12:06:25 create cloudconfig   - kube-node-1.yml COMPLETED
 	2015/07/23 12:06:25 create cloudconfig   - kube-node-2
 	2015/07/23 12:06:25 create cloudconfig   - kube-node-2.yml COMPLETED
-	2015/07/23 12:06:25 create port          - kube-master 10.0.0.140
+	2015/07/23 12:06:25 create port          - kube-master 192.1.168.140
 	2015/07/23 12:06:26 create port          - 86587b0b-4351-467e-baaf-882a6f71f952 COMPLETED
-	2015/07/23 12:06:26 create server        - kube-master 10.0.0.140
+	2015/07/23 12:06:26 create server        - kube-master 192.168.1.140
 	2015/07/23 12:06:27 image                - 5c2ccd59-1ae8-417a-8abc-22fb4f4b9f85
 	2015/07/23 12:06:27 flavor               - 102
-	2015/07/23 12:06:28 create server        - password pAYv4g9bH4Wj
+	2015/07/23 12:06:28 create server        - password <redacted>
 	2015/07/23 12:06:28 create server        - a77e155a-847f-41b8-a523-6d14a044a568 COMPLETED
-	2015/07/23 12:06:28 create port          - kube-node-1 10.0.0.141
+	2015/07/23 12:06:28 create port          - kube-node-1 192.168.1.141
 	2015/07/23 12:06:28 create port          - fb1180ea-134d-477f-a9a0-ad1e1ea9e447 COMPLETED
-	2015/07/23 12:06:28 create server        - kube-node-1 10.0.0.141
+	2015/07/23 12:06:28 create server        - kube-node-1 192.168.1.141
 	2015/07/23 12:06:29 image                - 5c2ccd59-1ae8-417a-8abc-22fb4f4b9f85
 	2015/07/23 12:06:29 flavor               - 101
-	2015/07/23 12:06:29 create server        - password CynjWU23GgBb
+	2015/07/23 12:06:29 create server        - password <redacted>
 	2015/07/23 12:06:29 create server        - 2627034a-6673-4837-976f-2620f4e4af4a COMPLETED
-	2015/07/23 12:06:29 create port          - kube-node-2 10.0.0.142
+	2015/07/23 12:06:29 create port          - kube-node-2 192.168.1.142
 	2015/07/23 12:06:30 create port          - a9a62294-9ce8-4804-8a93-3f0d5808b19a COMPLETED
-	2015/07/23 12:06:30 create server        - kube-node-2 10.0.0.142
+	2015/07/23 12:06:30 create server        - kube-node-2 192.168.1.142
 	2015/07/23 12:06:30 image                - 5c2ccd59-1ae8-417a-8abc-22fb4f4b9f85
 	2015/07/23 12:06:30 flavor               - 101
-	2015/07/23 12:06:31 create server        - password BeyKKM3WecAg
+	2015/07/23 12:06:31 create server        - password <redacted>
 	2015/07/23 12:06:31 create server        - 5bae49a3-e1c4-4a3e-8443-31702442a4e7 COMPLETED
 	2015/07/23 12:06:31 server status        - kube-master BUILD
 	2015/07/23 12:06:54 server status        - kube-master ACTIVE
@@ -185,13 +189,13 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Linux**
 
-		ssh -i kube-key core@15.126.200.248
+		ssh -i kube-key core@15.125.106.149
 
 		kubecfg get nodess 
 		
 		Results:
 	
-			$ ssh -i ../kube-key core@15.126.200.248
+			$ ssh -i ../kube-key core@15.125.106.149
 			
 			The authenticity of host '15.126.200.248 (15.126.200.248)' can't be established.
 			RSA key fingerprint is fe:b1:a0:6f:3b:60:e7:3c:26:30:98:4a:86:24:99:d8.
@@ -199,19 +203,19 @@ The installer process runs on your workstation, provisioning the cluster remotel
 			Warning: Permanently added '15.126.200.248' (RSA) to the list of known hosts.
 			CoreOS (stable)
 			core@kube-master ~ $ kubecfg get nodes
-			NAME         LABELS                              STATUS
-			10.0.0.141   kubernetes.io/hostname=10.0.0.141   Ready
-			10.0.0.142   kubernetes.io/hostname=10.0.0.142   Ready
+			NAME            LABELS                                 STATUS
+			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
+			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 	
 	**MacOS**
 
-		ssh -i kube-key core@15.126.200.248
+		ssh -i kube-key core@15.125.106.149
 			
 		kubecfg get nodes
 		
 		Results:
 
-			$ ssh -i ../kube-key core@15.126.200.248
+			$ ssh -i ../kube-key core15.125.106.149
 			
 			The authenticity of host '15.126.200.248 (15.126.200.248)' can't be established.
 			RSA key fingerprint is fe:b1:a0:6f:3b:60:e7:3c:26:30:98:4a:86:24:99:d8.
@@ -219,27 +223,29 @@ The installer process runs on your workstation, provisioning the cluster remotel
 			Warning: Permanently added '15.126.200.248' (RSA) to the list of known hosts.
 			CoreOS (stable)
 			core@kube-master ~ $ kubecfg get nodes
-			NAME         LABELS                              STATUS
-			10.0.0.141   kubernetes.io/hostname=10.0.0.141   Ready
-			10.0.0.142   kubernetes.io/hostname=10.0.0.142   Ready
+			NAME            LABELS                                 STATUS
+			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
+			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 	
 	**Windows**
 	
 	You will need an ssh client such as cywin for this.
 
-		>ssh -i my_key.pem core@15.126.200.248 "/opt/bin/kubectl get nodes"
+		>ssh -i my_key.pem core@15.125.106.149 "/opt/bin/kubectl get nodes"
 
 		Results:
 
-			>ssh -i my_key.pem core@15.126.200.248 "/opt/bin/kubectl get nodes"
-			Warning: Permanently added '15.126.200.248' (ED25519) to the list of known hosts.
-			NAME         LABELS                              STATUS
-			10.0.0.141   kubernetes.io/hostname=10.0.0.141   Ready
-			10.0.0.142   kubernetes.io/hostname=10.0.0.142   Ready
+			>ssh -i my_key.pem core@15.125.106.149 "/opt/bin/kubectl get nodes"
+			Warning: Permanently added '15.125.106.149' (ED25519) to the list of known hosts.
+			NAME            LABELS                                 STATUS
+			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
+			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 
 
 8. After verifying all the nodes are there, you are ready to rock and roll. The next step would be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
-) to the cluster. Happy containerizing!
+) to the cluster. 
+
+Happy containerizing!
 
 ## License ##
 
