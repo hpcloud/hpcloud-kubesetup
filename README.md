@@ -243,8 +243,8 @@ The installer process runs on your workstation, provisioning the cluster remotel
 			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 
 
-8. After verifying all the nodes are there, you are ready to rock and roll. The next step would be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
-) to the cluster. 
+8. After verifying all the nodes are there, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
+) to your Kubernetes cluster!
 
 Happy containerizing!
 
