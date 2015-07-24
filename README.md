@@ -23,7 +23,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip \
 		-O ~/kube/hpcloud-kubesetup-linux.zip
 		unzip hpcloud-kubesetup-linux.zip -d ~/kube/
-		sudo mv ~/kube/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		sudo mv ~/kube/linux/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
 		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
 		
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl \
@@ -38,7 +38,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip \
 		-O ~/kube/hpcloud-kubesetup-darwin.zip
 		unzip hpcloud-kubesetup-darwin.zip -d ~/kube/
-		sudo mv ~/kube/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		sudo mv ~/kube/darwin/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
 		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
 		
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/darwin/amd64/kubectl \
