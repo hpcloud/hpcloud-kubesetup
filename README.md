@@ -1,6 +1,5 @@
 #hpcloud-kubesetup 
 ##Deploying Kubernetes clusters to HP Helion OpenStack
-##====================================================
 
 This repository contains the code and instructions for the hpcloud-kubesetup installer tool. The hpcloud-kubesetup installer enables you to create and deploy Kubernetes (1.0.1) clusters on to your own private HP Helion OpenStack environment (version 1.1 or later) or to your hosted HP Helion Public Cloud account. 
 
