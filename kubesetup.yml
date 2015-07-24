@@ -17,4 +17,4 @@ hosts:
 
 sshkey: kube-key
 network: kube-net
-availabilityZone: az2
+availabilityZone: AZ2
