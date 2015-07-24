@@ -9,8 +9,8 @@ The installer process runs on your workstation, provisioning the cluster remotel
 1. Credentials to your HP Helion OpenStack environment or HP Helion Public Cloud account.
 2. CoreOS version 653.0.0 or later loaded in to OpenStack glance  [(steps)](https://coreos.com/os/docs/latest/booting-on-openstack.html). Note: when deploying to a HP Helion Public Cloud account this prerquisite is already satisfied.
 3. An OpenStack project/tenant to deploy your Kubernetes cluster to. Note: when deploying to a HP Helion Public Cloud account, you can use the existing tenant.
-3. A private network within the OpenStack project/tenant, providingt network isolation [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh).
-4. Ingress TCP communication over ports 22 (SSH), 80, 443 and 8080 (kube-apiserver) by adding these rulese to the default OpenStack security group within the project [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/update-default-securitygroup.sh)
+3. A private network within the OpenStack project/tenant, providingt network isolation [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh).
+4. Ingress TCP communication over ports 22 (SSH), 80, 443 and 8080 (kube-apiserver) by adding these rulese to the default OpenStack security group within the project [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/update-default-securitygroup.sh)
 5. A Linux, Mac, or Windows workstation with internet connectivity and connectivity to your HP Helion OpenStack environment.
 
 ## Steps ##
@@ -48,7 +48,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		
 	**Windows**
 	
-	For automated installation folllow these [instructions](https://github.com/gertd/hpcloud-kubesetup/blob/master/windows/README.md).
+	For automated installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/windows/README.md).
 	
 	For manual installation steps:
 	1. Download [hpcloud-kubesetup-windows.zip](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip) 
@@ -93,7 +93,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	You will need to:
 	 * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key name of an existing key pair inside OpenStack
-	 * Create the kube-net network [(steps)](https://github.com/gertd/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh) or modify the network entry in the kubesetup.yml file to an existing private network inside the project/tenant you will be deploying to
+	 * Create the kube-net network [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh) or modify the network entry in the kubesetup.yml file to an existing private network inside the project/tenant you will be deploying to
 	 * Verify if specified IP address range is supported by your subnet. When using the create-private-network.sh script you can use the default values
 
 	**kubesetup.yml**
