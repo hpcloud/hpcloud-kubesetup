@@ -1,121 +1,324 @@
-// hpcloud-kubesetup project main.go
 package main
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
-	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"time"
 
-	"github.com/gertd/go-openstack"
-	"github.com/gertd/go-openstack/compute"
-	"github.com/gertd/go-openstack/identity"
-	"github.com/gertd/go-openstack/image"
-	"github.com/gertd/go-openstack/network"
+	compute "git.openstack.org/stackforge/golang-client.git/compute/v2"
+	common "git.openstack.org/stackforge/golang-client.git/identity/common"
+	identity "git.openstack.org/stackforge/golang-client.git/identity/v2"
+	image "git.openstack.org/stackforge/golang-client.git/image/v1"
+	misc "git.openstack.org/stackforge/golang-client.git/misc"
+	requester "git.openstack.org/stackforge/golang-client.git/misc/requester"
+	network "git.openstack.org/stackforge/golang-client.git/network/v2"
 
+	"github.com/codegangsta/cli"
 	"github.com/parnurzeal/gorequest"
 
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
+
+var version = "0.0.3"
 
 var (
-	configFile string
-	authUrl    string
-	tenantId   string
-	tenantName string
-	username   string
-	password   string
-	region     string
-	uninstall  bool
+	computeService compute.Service
+	networkService network.Service
+	imageService   image.Service
+	config         configContainer
+	keypair        compute.KeyPairResponse
+	netwrk         network.Response
+	subnets        []network.SubnetResponse
+	servers        []compute.Server
+	ports          []network.PortResponse
+	flavorMap      map[string]string
 )
 
-type Config struct {
-	Nodes  map[string]Node `yaml:"hosts"`
-	SSHKey string          `yaml:"sshkey"`
+type configContainer struct {
+	Nodes            map[string]configNode `yaml:"hosts"`
+	SSHKey           string                `yaml:"sshkey"`
+	Network          string                `yaml:"network"`
+	AvailabilityZone string                `yaml:"availabilityZone"`
+	OrderedNodeKeys  []string
 }
 
-type Node struct {
+type configNode struct {
 	IP       string `yaml:"ip"`
 	IsMaster bool   `yaml:"ismaster"`
 	VMImage  string `yaml:"vm-image"`
 	VMSize   string `yaml:"vm-size"`
-	ServerId string
-}
-
-func init() {
-	flag.StringVar(&configFile, "c", "kubesetup.yml", "Kubernetes cluster configuration file")
-	flag.StringVar(&authUrl, "a", "", "OpenStack authentication URL (OS_AUTH_URL)")
-	flag.StringVar(&tenantId, "i", "", "OpenStack tenant id (OS_TENANT_ID)")
-	flag.StringVar(&tenantName, "n", "", "OpenStack tenant name (OS_TENANT_NAME)")
-	flag.StringVar(&username, "u", "", "OpenStack user name (OS_USERNAME)")
-	flag.StringVar(&password, "p", "", "OpenStack passsword (OS_PASSWORD)")
-	flag.StringVar(&region, "r", "", "OpenStack region name (OS_REGION_NAME)")
-	flag.BoolVar(&uninstall, "U", false, "Uninstall cluster (defined in config file -c)")
+	ServerID string
 }
 
 func main() {
-	flag.Parse()
 
-	config, err := readConfigFile(configFile)
+	app := cli.NewApp()
+	app.Name = "hpcloud-kubesetup"
+	app.Usage = "Kubernetes cluster setup for HP Helion OpenStack"
+	app.Version = version
+	app.Author = "Gert Drapers"
+	app.Email = "gert.drapers@hp.com"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  Config,
+			Value: DefaultConfig,
+			Usage: "Kubernetes cluster configuration file",
+		},
+		cli.StringFlag{
+			Name:   AuthURL,
+			Value:  "",
+			Usage:  "OpenStack authentication URL",
+			EnvVar: AuthURLEnv,
+		},
+		cli.StringFlag{
+			Name:   TenantID,
+			Value:  "",
+			Usage:  "OpenStack tenant id",
+			EnvVar: TenantIDEnv,
+		},
+		cli.StringFlag{
+			Name:   TenantName,
+			Value:  "",
+			Usage:  "OpenStack tenant name",
+			EnvVar: TenantNameEnv,
+		},
+		cli.StringFlag{
+			Name:   Username,
+			Value:  "",
+			Usage:  "OpenStack user name",
+			EnvVar: UsernameEnv,
+		},
+		cli.StringFlag{
+			Name:   Password,
+			Value:  "",
+			Usage:  "OpenStack password",
+			EnvVar: PasswordEnv,
+		},
+		cli.StringFlag{
+			Name:   RegionName,
+			Value:  "",
+			Usage:  "OpenStack region name",
+			EnvVar: RegionNameEnv,
+		},
+		cli.StringFlag{
+			Name:   AuthToken,
+			Value:  "",
+			Usage:  "OpenStack auth token",
+			EnvVar: AuthTokenEnv,
+		},
+		cli.StringFlag{
+			Name:   CACert,
+			Value:  "",
+			Usage:  "OpenStack TLS (https) server certificate",
+			EnvVar: CACertEnv,
+		},
+		cli.BoolFlag{
+			Name:  SkipSSLValidation,
+			Usage: "Skip SSL validation",
+		},
+		cli.BoolFlag{
+			Name:  Debug,
+			Usage: "Enable debug spew",
+		},
+	}
+
+	app.Commands = []cli.Command{
+		{
+			Name:   Install,
+			Usage:  "Create Kubernetes cluster",
+			Action: installAction,
+		},
+		/*
+			{
+				Name:   Status,
+				Usage:  "Status of Kubernetes cluster",
+				Action: statusAction,
+			},
+		*/
+		{
+			Name:   Uninstall,
+			Usage:  "Remove Kubernetes cluster",
+			Action: uninstallAction,
+		},
+	}
+
+	err := app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	os.Exit(1)
+}
+
+func installAction(c *cli.Context) {
+
+	initTask(c)
+	uninstallTask(c)
+	createCloudConfigTask(c)
+	installTask(c)
+	statusTask(c)
+	assignIPAddressTask(c)
+}
+
+func statusAction(c *cli.Context) {
+
+	initTask(c)
+	statusTask(c)
+}
+
+func uninstallAction(c *cli.Context) {
+
+	initTask(c)
+	uninstallTask(c)
+}
+
+func initTask(c *cli.Context) {
+
+	var err error
+
+	config, err = readConfigFile(c.GlobalString(Config))
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	for k := range config.Nodes {
+		config.OrderedNodeKeys = append(config.OrderedNodeKeys, k)
+	}
+	sort.Strings(config.OrderedNodeKeys)
+
 	config.Log()
 
-	openStackConfig, err := openstack.InitializeFromEnv()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	updateConfigFromCommandLine(&openStackConfig)
-	openStackConfig.Log()
+	log.Printf("%-20s - %s\n", AuthURLEnv, c.GlobalString(AuthURL))
+	log.Printf("%-20s - %s\n", TenantIDEnv, c.GlobalString(TenantID))
+	log.Printf("%-20s - %s\n", TenantNameEnv, c.GlobalString(TenantName))
+	log.Printf("%-20s - %s\n", UsernameEnv, c.GlobalString(Username))
+	log.Printf("%-20s - %s\n", RegionNameEnv, c.GlobalString(RegionName))
+	log.Printf("%-20s - %s\n", AuthTokenEnv, c.GlobalString(AuthToken))
+	log.Printf("%-20s - %s\n", CACertEnv, c.GlobalString(CACert))
+	log.Printf("%-20s - %v\n", SkipSSLValidation, c.GlobalBool(SkipSSLValidation))
+	log.Printf("%-20s - %v\n", Debug, c.GlobalBool(Debug))
 
-	auth, err := identity.Authenticate(openStackConfig)
-	if err != nil {
-		log.Fatal(err.Error())
+	authParameters := common.AuthenticationParameters{
+		AuthURL:    c.GlobalString(AuthURL),
+		Username:   c.GlobalString(Username),
+		Password:   c.GlobalString(Password),
+		Region:     c.GlobalString(RegionName),
+		TenantID:   c.GlobalString(TenantID),
+		TenantName: c.GlobalString(TenantName),
+		CACert:     c.GlobalString(CACert),
 	}
-	log.Printf("%-20s - %s\n", "token:", auth.Access.Token.Id)
 
-	keypair, err := compute.GetKeypair(auth, config.SSHKey)
+	var transport *http.Transport
+
+	if c.GlobalString(CACert) != "" {
+
+		pemData, err := ioutil.ReadFile(c.GlobalString(CACert))
+		if err != nil {
+			log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "Unable to load CA Certificate file", c.GlobalString(CACert)))
+		}
+
+		certPool := x509.NewCertPool()
+
+		if !certPool.AppendCertsFromPEM(pemData) {
+			log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "Invalid CA Certificates in file", c.GlobalString(CACert)))
+		}
+
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:            certPool,
+				InsecureSkipVerify: c.GlobalBool(SkipSSLValidation),
+			},
+		}
+		misc.Transport(transport)
+
+	} else {
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: c.GlobalBool(SkipSSLValidation),
+			},
+		}
+		misc.Transport(transport)
+	}
+
+	authenticator := identity.Authenticate(authParameters)
+	authenticator.SetFunction(requester.DebugRequestMakerGenerator(nil, &http.Client{Transport: transport}, c.GlobalBool(Debug)))
+
+	token, err := authenticator.GetToken()
 	if err != nil {
 		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 	}
+	log.Printf("%-20s - %s\n", "token", token)
 
-	subnets, err := network.GetSubnets(auth)
+	computeService = compute.NewService(&authenticator)
+
+	networkService = network.NewService(&authenticator)
+
+	imageService = image.NewService(&authenticator)
+
+	keypair, err = computeService.KeyPair(config.SSHKey)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
-	}
-	if len(subnets) == 0 {
-		err = errors.New("subnet not found")
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get keypair", config.SSHKey, err.Error()))
 	}
 
-	ports, err := network.GetPorts(auth)
+	var q = network.QueryParameters{Name: config.Network}
+	networks, err := networkService.QueryNetworks(q)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get network by name", config.Network, err.Error()))
 	}
-	sort.Sort(network.ByName(ports))
 
-	servers, err := compute.GetServers(auth)
+	netwrk, err = networkService.Network(networks[0].ID)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "getting network by id", networks[0].ID, err.Error()))
 	}
-	sort.Sort(compute.ByName(servers))
+	log.Printf("%-20s - %s\n", "network", netwrk.ID)
 
-	// uninstall/cleanup
+	subnets, err = networkService.Subnets()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get subnets", err.Error()))
+	}
+
+	ports, err = networkService.Ports()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get ports", err.Error()))
+	}
+
+	sort.Sort(PortByName(ports))
+
+	servers, err = computeService.Servers()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get servers", err.Error()))
+	}
+
+	sort.Sort(ServerByName(servers))
+
+	flavors, err := computeService.Flavors()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get flavors", err.Error()))
+	}
+
+	flavorMap = make(map[string]string)
+	for _, p := range flavors {
+		flavorMap[p.Name] = p.ID
+	}
+}
+
+func uninstallTask(c *cli.Context) {
+
 	for _, v := range servers {
 
 		if _, ok := config.Nodes[v.Name]; ok {
 
 			log.Printf("%-20s - %s\n", "delete server", v.Name)
 
-			err := compute.DeleteServer(auth, v.Id)
+			err := computeService.DeleteServer(v.ID)
 			if err != nil {
 				log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 			}
@@ -130,21 +333,27 @@ func main() {
 
 			log.Printf("%-20s - %s\n", "delete port", v.Name)
 
-			err := network.DeletePort(auth, v.Id)
-			if err != nil {
+			err := networkService.DeletePort(v.ID)
+			if noErrorOn404(err) != nil {
 				log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 			}
 
 			log.Printf("%-20s - %s %s\n", "delete port", v.Name, "COMPLETED")
 		}
 	}
+}
 
-	if uninstall {
-		os.Exit(1)
+func createCloudConfigTask(c *cli.Context) {
+
+	nodeID := 0
+
+	masterIP, err := getMasterIP(config.Nodes)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get master IP", err.Error()))
 	}
 
-	// create cloudconfig files
-	nodeId := 0
+	discovery := getDiscoveryKey()
+
 	for k, v := range config.Nodes {
 
 		log.Printf("%-20s - %s\n", "create cloudconfig", k)
@@ -156,91 +365,90 @@ func main() {
 		if v.IsMaster {
 			data["role"] = "master"
 		} else {
-			data["role"] = "minion"
+			data["role"] = "node"
 		}
 
-		data["masterip"] = getMasterIp(config.Nodes)
-		data["machines"] = getMachines(config.Nodes)
-		data["peers"] = getPeers(config.Nodes, v)
+		data["discovery"] = discovery
+		data["master"] = masterIP
 		data["hostname"] = k
 		data["ip"] = v.IP
-		data["dns"] = subnets[0].GatewayIP
-		data["gateway"] = subnets[0].GatewayIP
-		data["subnet"] = fmt.Sprintf("10.244.%d.1/24", nodeId) // subnets.Subnets[0].CIDR
 		data["sshkey"] = keypair.PublicKey
-		data["discovery"] = getDiscoveryKey()
 
-		nodeId = nodeId + 1
+		nodeID = nodeID + 1
 
 		createCloudConfig(data)
 
 		log.Printf("%-20s - %s %s\n", "create cloudconfig", data["filename"], "COMPLETED")
 	}
+}
 
-	// install
-	for k, v := range config.Nodes {
+func installTask(c *cli.Context) {
 
-		log.Printf("%-20s - %s %s\n", "create port", k, v.IP)
+	for _, v := range config.OrderedNodeKeys {
 
-		newPort := network.Port{}
-		newPort.Name = k
-		newPort.NetworkId = subnets[0].NetworkId
-		newPort.FixedIPs = []network.FixedIP{{subnets[0].Id, v.IP}}
+		log.Printf("%-20s - %s %s\n", "create port", v, config.Nodes[v].IP)
 
-		port, err := network.CreatePort(auth, newPort)
+		newPort := network.CreatePortParameters{}
+		newPort.Name = v
+		newPort.AdminStateUp = true
+		newPort.NetworkID = netwrk.ID
+		newPort.FixedIPs = []network.FixedIP{{IPAddress: config.Nodes[v].IP, SubnetID: netwrk.Subnets[0]}}
+
+		port, err := networkService.CreatePort(newPort)
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
 
-		log.Printf("%-20s - %s %s\n", "create port", port.Id, "COMPLETED")
+		log.Printf("%-20s - %s %s\n", "create port", port.ID, "COMPLETED")
 
-		log.Printf("%-20s - %s %s\n", "create server", k, v.IP)
+		log.Printf("%-20s - %s %s\n", "create server", v, config.Nodes[v].IP)
 
-		userdata, err := getUserData(k + ".yml")
+		userdata, err := getUserData(v + ".yml")
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
 
-		flavor, err := compute.GetFlavor(auth, v.VMSize)
+		imageQuery := image.QueryParameters{Name: config.Nodes[v].VMImage}
+		images, err := imageService.QueryImages(imageQuery)
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
-		log.Printf("%-20s - %s\n", "flavor:", flavor.Id)
+		log.Printf("%-20s - %s\n", "image", images[0].ID)
 
-		image, err := image.GetImage(auth, v.VMImage)
-		if err != nil {
-			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
-		}
-		log.Printf("%-20s - %s\n", "image:", image.Id)
+		log.Printf("%-20s - %s\n", "flavor", flavorMap[config.Nodes[v].VMSize])
 
-		newServer := compute.NewServer{}
-		newServer.Name = k
-		newServer.ImageRef = image.Id
-		newServer.FlavorRef = flavor.Id
-		newServer.KeyName = keypair.Name
-		newServer.UserData = userdata
-		newServer.Network = []compute.Network{{port.NetworkId, port.Id}}
-		newServer.SecurityGroups = []compute.SecurityGroup{{"default"}}
+		newServer := compute.ServerCreationParameters{}
+		newServer.Name = v
+		newServer.ImageRef = images[0].ID
+		newServer.FlavorRef = flavorMap[config.Nodes[v].VMSize]
+		newServer.KeyPairName = keypair.Name
+		newServer.UserData = &userdata
+		newServer.Networks = []compute.ServerNetworkParameters{{UUID: port.NetworkID, Port: port.ID}}
+		newServer.SecurityGroups = []compute.SecurityGroup{{Name: "default"}}
+		newServer.AvailabilityZone = &config.AvailabilityZone
 
-		server, err := compute.CreateServer(auth, newServer)
+		server, err := computeService.CreateServer(newServer)
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
 
 		log.Printf("%-20s - %s %s\n", "create server", "password", server.AdminPass)
-		log.Printf("%-20s - %s %s\n", "create server", server.Id, "COMPLETED")
+		log.Printf("%-20s - %s %s\n", "create server", server.ID, "COMPLETED")
 
-		node := config.Nodes[k]
-		node.ServerId = server.Id
-		config.Nodes[k] = node
+		node := config.Nodes[v]
+		node.ServerID = server.ID
+		config.Nodes[v] = node
 	}
+}
 
-	// status
-	for _, v := range config.Nodes {
+func statusTask(c *cli.Context) {
+
+	for _, v := range config.OrderedNodeKeys {
 
 		prevStatus := ""
 		for {
-			server, err := compute.GetServer(auth, v.ServerId)
+			server, err := computeService.ServerDetail(config.Nodes[v].ServerID)
+
 			if err != nil {
 				log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 			}
@@ -256,16 +464,18 @@ func main() {
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
 
-	// associate floating IP with each master node
+func assignIPAddressTask(c *cli.Context) {
+
 	var unAssigned []compute.FloatingIP
-	floatingIPs, err := compute.GetFloatingIPs(auth)
+	floatingIPs, err := computeService.FloatingIPs()
 	if err != nil {
 		log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 	}
 
 	for _, v := range floatingIPs {
-		if len(v.InstanceId) == 0 {
+		if len(v.InstanceID) == 0 {
 			unAssigned = append(unAssigned, v)
 		}
 	}
@@ -281,7 +491,7 @@ func main() {
 			log.Printf("%-20s - %s %s\n", "create public IP", "", "")
 
 			var fp compute.FloatingIP
-			fp, err := compute.CreateFloatingIP(auth)
+			fp, err := computeService.CreateFloatingIPInDefaultPool()
 			if err != nil {
 				log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 			}
@@ -293,41 +503,17 @@ func main() {
 
 		log.Printf("%-20s - %s %s\n", "associate IP", k, unAssigned[0].IP)
 
-		err := compute.ServerAction(auth, v.ServerId, "addFloatingIp", "address", unAssigned[0].IP)
+		err := computeService.ServerAction(v.ServerID, "addFloatingIp", "address", unAssigned[0].IP)
 		if err != nil {
 			log.Fatal(fmt.Sprintf("%-20s - %s\n", "error:", err.Error()))
 		}
 
-		unAssigned = append(unAssigned[1:])
 		log.Printf("%-20s - %s %s\n", "associate IP", k, "COMPLETED")
-	}
-
-	os.Exit(1)
-}
-
-func updateConfigFromCommandLine(config *openstack.OpenStackConfig) {
-
-	if len(authUrl) > 0 {
-		config.AuthUrl = authUrl
-	}
-	if len(tenantId) > 0 {
-		config.TenantId = tenantId
-	}
-	if len(tenantName) > 0 {
-		config.TenantName = tenantName
-	}
-	if len(username) > 0 {
-		config.Username = username
-	}
-	if len(password) > 0 {
-		config.Password = password
-	}
-	if len(region) > 0 {
-		config.Region = region
+		unAssigned = append(unAssigned[1:])
 	}
 }
 
-func readConfigFile(filename string) (config Config, err error) {
+func readConfigFile(filename string) (config configContainer, err error) {
 
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -343,11 +529,14 @@ func readConfigFile(filename string) (config Config, err error) {
 	return
 }
 
-func (config Config) Log() {
+func (config configContainer) Log() {
 	for k, v := range config.Nodes {
 		log.Printf("%-20s - %s %v\n", "config file", k, v)
 	}
 	log.Printf("%-20s - %s %s\n", "config file", "SSHKey", config.SSHKey)
+	log.Printf("%-20s - %s %s\n", "config file", "Network", config.Network)
+	log.Printf("%-20s - %s %s\n", "config file", "AvailabilityZone", config.AvailabilityZone)
+
 }
 
 func createCloudConfig(data map[string]string) error {
@@ -359,8 +548,16 @@ func createCloudConfig(data map[string]string) error {
 	}
 
 	w := io.MultiWriter(f, &b)
-	if err := nodeTmpl.Execute(w, data); err != nil {
-		return err
+	if data["role"] == "master" {
+		if err := masterTmpl.Execute(w, data); err != nil {
+			fmt.Println("err masterTmpl")
+			return err
+		}
+	} else {
+		if err := nodeTmpl.Execute(w, data); err != nil {
+			fmt.Println("err nodeTmpl")
+			return err
+		}
 	}
 
 	f.Close()
@@ -379,55 +576,15 @@ func getUserData(filename string) (encodedStr string, err error) {
 	return
 }
 
-func getMachines(nodeList map[string]Node) string {
-
-	var csv bytes.Buffer
-
-	i := 0
-	for _, v := range nodeList {
-		csv.WriteString(v.IP)
-		if i < (len(nodeList) - 1) {
-			csv.WriteString(",")
-		}
-		i = i + 1
-	}
-
-	return csv.String()
-}
-
-func getPeers(nodeList map[string]Node, self Node) string {
-
-	var csv bytes.Buffer
-
-	i := 0
-	for _, v := range nodeList {
-
-		if v.IP == self.IP {
-			continue
-		}
-
-		csv.WriteString(v.IP + ":7001")
-		if i < (len(nodeList) - 2) {
-			csv.WriteString(",")
-		}
-		i = i + 1
-	}
-
-	return csv.String()
-}
-
-func getMasterIp(nodeList map[string]Node) string  {
+func getMasterIP(nodeList map[string]configNode) (string, error) {
 
 	for _, v := range nodeList {
-
 		if v.IsMaster {
-				return v.IP
+			return v.IP, nil
 		}
 	}
-
-	return ""
+	return "", fmt.Errorf("No master IP address found")
 }
-
 
 /*
 	CoreOS Cluster Discovery ID
@@ -450,3 +607,29 @@ func getDiscoveryKey() string {
 
 	return string(body)
 }
+
+func noErrorOn404(err error) error {
+
+	if err != nil {
+		errStatusCode := err.(misc.HTTPStatus)
+		if errStatusCode.StatusCode != 404 {
+			// fmt.Println("error found in noerroron404", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// PortByName - sort functions for network ports by name
+type PortByName []network.PortResponse
+
+func (a PortByName) Len() int           { return len(a) }
+func (a PortByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a PortByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
+
+// ServerByName - sort functions for server by name
+type ServerByName []compute.Server
+
+func (a ServerByName) Len() int           { return len(a) }
+func (a ServerByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ServerByName) Less(i, j int) bool { return a[i].Name < a[j].Name }

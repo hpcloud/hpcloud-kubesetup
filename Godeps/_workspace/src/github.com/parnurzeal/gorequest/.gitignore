@@ -6,7 +6,6 @@
 # Folders
 _obj
 _test
-build
 
 # Architecture specific extensions/prefixes
 *.[568vq]
@@ -21,9 +20,4 @@ _cgo_export.*
 _testmain.go
 
 *.exe
-*.test
-*.prof
-
-# Generated CloudInit files
-kube-master.yml
-kube-node-*.yml
+tags
