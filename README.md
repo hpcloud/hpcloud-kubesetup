@@ -46,7 +46,8 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		
 	**Windows**
 	
-	[Installation script](https://github.com/gertd/hpcloud-kubesetup/blob/master/windows/README.md)
+	For automated installation folllow this [instructions](https://github.com/gertd/hpcloud-kubesetup/blob/master/windows/README.md).
+	
 	For manual installation steps:
 	1. Download [hpcloud-kubesetup-windows.zip](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip) 
 	2. Unzip hpcloud-kubesetup.zip
