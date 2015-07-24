@@ -4,11 +4,11 @@ To install hpcloud-kubesetup.exe and Kubernetes kubectl.exe on to Windows run on
 
 **From command shell (cmd.exe):**
 
-    @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/windows/kubernetes-tools-installer.ps1'))"
+    @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/setup/windows/kubernetes-tools-installer.ps1'))"
  
 **From PowerShell:**
 
-    iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/windows/kubernetes-tools-installer.ps1'))
+    iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/setup/windows/kubernetes-tools-installer.ps1'))
  
 This will install the following files in the **c:\kube** directory:
 * hpcloud-kubesetup-windows.zip
