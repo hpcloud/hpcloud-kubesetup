@@ -17,40 +17,61 @@ The installer process runs on your workstation, provisioning the cluster remotel
 1. Download and install the hpcloud-kubesetup installer and Kubernetes kubectl utility for your specific platform:
 
 	**Linux**
+	
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/linux/README.md).
+	
+	Manual installation steps:
 
-		mkdir -p ~/kube
+		mkdir -p /usr/local/kubernetes
 		
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip \
-		-O ~/kube/hpcloud-kubesetup-linux.zip
-		unzip hpcloud-kubesetup-linux.zip -d ~/kube/
-		sudo mv ~/kube/linux/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
-		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
+		-O /usr/local/kubernetes/hpcloud-kubesetup-linux.zip
+		
+		unzip -o /usr/local/kubernetes/hpcloud-kubesetup-linux.zip -d /usr/local/kubernetes/
 		
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl \
-		-O ~/kube/kubectl
-		sudo mv ~/kube/kubectl /usr/local/bin/kubectl
-		sudo chmod +x /usr/local/bin/kubectl
+		-O /usr/local/kubernetes/linux/kubectl
+		
+		chmod +x /usr/local/kubernetes/linux/hpcloud-kubesetup
+		ln -s /usr/local/kubernetes/linux/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		
+		chmod +x /usr/local/kubernetes/linux/kubectl
+		ln -s /usr/local/kubernetes/linux/kubectl /usr/local/bin/kubectl
+		
+		mkdir -p ~/kubernetes
+		cp -n /usr/local/kubernetes/linux/kubesetup.yml ~/kubernetes/.
 	
 	**Mac**
-
-		mkdir -p ~/kube
+	
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/darwin/README.md).
+	
+	Manual installation steps:
+	
+		mkdir -p /usr/local/kubernetes
 		
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip \
-		-O ~/kube/hpcloud-kubesetup-darwin.zip
-		unzip hpcloud-kubesetup-darwin.zip -d ~/kube/
-		sudo mv ~/kube/darwin/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
-		sudo chmod +x /usr/local/bin/hpcloud-kubesetup
+		-O /usr/local/kubernetes/hpcloud-kubesetup-darwin.zip
+		
+		unzip -o /usr/local/kubernetes/hpcloud-kubesetup-darwin.zip -d /usr/local/kubernetes/
 		
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/darwin/amd64/kubectl \
-		-O ~/kube/kubectl
-		sudo mv ~/kube/kubectl /usr/local/bin/kubectl
-		sudo chmod +x /usr/local/bin/kubectl
+		-O /usr/local/kubernetes/darwin/kubectl
 		
+		chmod +x /usr/local/kubernetes/darwin/hpcloud-kubesetup
+		ln -s /usr/local/kubernetes/darwin/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
+		
+		chmod +x /usr/local/kubernetes/darwin/kubectl
+		ln -s /usr/local/kubernetes/darwin/kubectl /usr/local/bin/kubectl
+		
+		mkdir -p ~/kubernetes
+		cp -n /usr/local/kubernetes/darwin/kubesetup.yml ~/kubernetes/.
+
 	**Windows**
 	
-	For automated installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/windows/README.md).
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/windows/README.md).
 	
-	For manual installation steps:
+	Manual installation steps:
+	
 	1. Download [hpcloud-kubesetup-windows.zip](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip) 
 	2. Unzip hpcloud-kubesetup.zip
 	3. Download [kubectl.exe](https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe) 
