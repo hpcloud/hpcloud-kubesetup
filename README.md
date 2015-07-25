@@ -1,7 +1,7 @@
-#hpcloud-kubesetup 
+#hpcloud-kubesetup
 ##Deploying Kubernetes clusters to HP Helion OpenStack
 
-This repository contains the code and instructions for the hpcloud-kubesetup installer tool. The hpcloud-kubesetup installer enables you to create and deploy Kubernetes (1.0.1) clusters on to your own private HP Helion OpenStack environment (version 1.1 or later) or to your hosted HP Helion Public Cloud account. 
+This repository contains the code and instructions for the hpcloud-kubesetup installer tool. The hpcloud-kubesetup installer enables you to create and deploy Kubernetes (1.0.1) clusters on to your own private HP Helion OpenStack environment (version 1.1 or later) or to your hosted HP Helion Public Cloud account.
 
 The installer process runs on your workstation, provisioning the cluster remotely.
 
@@ -17,77 +17,77 @@ The installer process runs on your workstation, provisioning the cluster remotel
 1. Download and install the hpcloud-kubesetup installer and Kubernetes kubectl utility for your specific platform:
 
 	**Linux**
-	
+
 	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/linux/README.md).
 
 	Manual installation steps:
 
 		mkdir -p /usr/local/kubernetes
-		
+
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-linux.zip \
 		-O /usr/local/kubernetes/hpcloud-kubesetup-linux.zip
-		
+
 		unzip -o /usr/local/kubernetes/hpcloud-kubesetup-linux.zip -d /usr/local/kubernetes/
-		
+
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/linux/amd64/kubectl \
 		-O /usr/local/kubernetes/linux/kubectl
-		
+
 		chmod +x /usr/local/kubernetes/linux/hpcloud-kubesetup
 		ln -s /usr/local/kubernetes/linux/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
-		
+
 		chmod +x /usr/local/kubernetes/linux/kubectl
 		ln -s /usr/local/kubernetes/linux/kubectl /usr/local/bin/kubectl
-		
+
 		mkdir -p ~/kubernetes
 		cp -n /usr/local/kubernetes/linux/kubesetup.yml ~/kubernetes/.
-	
+
 	**Mac**
-	
+
 	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/darwin/README.md).
-	
+
 	Manual installation steps:
-	
+
 		mkdir -p /usr/local/kubernetes
-		
+
 		wget https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-darwin.zip \
 		-O /usr/local/kubernetes/hpcloud-kubesetup-darwin.zip
-		
+
 		unzip -o /usr/local/kubernetes/hpcloud-kubesetup-darwin.zip -d /usr/local/kubernetes/
-		
+
 		wget https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/darwin/amd64/kubectl \
 		-O /usr/local/kubernetes/darwin/kubectl
-		
+
 		chmod +x /usr/local/kubernetes/darwin/hpcloud-kubesetup
 		ln -s /usr/local/kubernetes/darwin/hpcloud-kubesetup /usr/local/bin/hpcloud-kubesetup
-		
+
 		chmod +x /usr/local/kubernetes/darwin/kubectl
 		ln -s /usr/local/kubernetes/darwin/kubectl /usr/local/bin/kubectl
-		
+
 		mkdir -p ~/kubernetes
 		cp -n /usr/local/kubernetes/darwin/kubesetup.yml ~/kubernetes/.
 
 	**Windows**
-	
+
 	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/windows/README.md).
-	
+
 	Manual installation steps:
-	
-	1. Download [hpcloud-kubesetup-windows.zip](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip) 
+
+	1. Download [hpcloud-kubesetup-windows.zip](https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip)
 	2. Unzip hpcloud-kubesetup.zip
-	3. Download [kubectl.exe](https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe) 
-	
+	3. Download [kubectl.exe](https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe)
+
 2. Log into the OpenStack Horizon portal with your account and download the "OpenStack RC file" located on the Project\Access & Security panel inside the API Access tab. The [download button](https://a248.e.akamai.net/cdn.hpcloudsvc.com/ha4ca03ecf0c27c00f0c991360b263f06/prodaw2/rc-file.png) is on the top right corner.
 
-3. Setup OpenStack environment variables 
+3. Setup OpenStack environment variables
 
 	**Mac & Linux**
 
 	Execute the OpenStack resource script. The script will ask you to enter your OpenStack password. All settings will be exported as environment variables.
 
 		source ./<your project name>-openrc.sh
-	
+
 	To inspect what was exported, run `export | grep OS_`. You should see a similar result to:
-		
+
 		$ export | grep OS_
 		declare -x OS_AUTH_URL="https://region-a.geo-1.identity.hpcloudsvc.com:35357/v2.0/"
 		declare -x OS_PASSWORD="My Very Secret Password"
@@ -96,21 +96,21 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		declare -x OS_USERNAME="kube"
 
 	**Windows**
-	
+
 	Rename the downloaded <your project name>-openrc.sh file to <your project name>-openrc.bat
 	Open the <your project name>-openrc.bat file within an editor like notepad.
 	Replace the export statement with set statement, like shown below.
-	
+
 		set OS_AUTH_URL=<OS_AUTH_URL>
 		set OS_TENANT_ID=<OS_TENANT_ID>
 		set OS_TENANT_NAME=<OS_TENANT_NAME>
 		set OS_USERNAME=<OS_USERNAME>
-		set OS_PASSWORD=<OS_PASSWORD>	
+		set OS_PASSWORD=<OS_PASSWORD>
 		set OS_REGION_NAME=<OS_REGION_NAME>
-		
+
 	Run the <your project name>-openrc.bat file inside the console window from which we will the remaining installer steops
 
-4. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created. 
+4. Update `kubesetup.yml` if necessary. This file describes the setup of the cluster. By default, a cluster consisting of 3 nodes, 1 master node and 2 minion nodes, will be created.
 
 	You will need to:
 	 * Create a new ssh key named `kube-key` or modify `sshkey` to reflect the key name of an existing key pair inside OpenStack
@@ -135,7 +135,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		    ismaster: false
 		    vm-image: CoreOS
 		    vm-size: standard.small
-		
+
 		sshkey: kube-key
 		network: kube-net
 		availabilityZone: az2
@@ -145,15 +145,15 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	**Mac & Linux**
 
 		hpcloud-kubesetup install
-	
+
 	**Windows**
 
 		hpcloud-kubesetup.exe install
 
 
 	Once run, you should see the following results:
-	
-	```	
+
+	```
 	>hpcloud-kubesetup.exe install
 	2015/07/23 12:06:23 config file          - kube-master {192.168.1.140 true CoreOS standard.medium }
 	2015/07/23 12:06:23 config file          - kube-node-1 {192.168.1.141 false CoreOS standard.small }
@@ -204,65 +204,24 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	2015/07/23 12:06:54 server status        - kube-node-1 ACTIVE
 	2015/07/23 12:06:54 server status        - kube-node-2 ACTIVE
 	2015/07/23 12:06:54 associate IP         - kube-master 15.125.106.149
-	2015/07/23 12:06:55 associate IP         - kube-master COMPLETED	
+	2015/07/23 12:06:55 associate IP         - kube-master COMPLETED
 	```
 
-7. The installer associates a floating IP address with the Kubernetes master node. You can get the floating IP in your instances Horizon panel. The next step is to ssh in to the master node and run the Kubernetes kubecfg tool to list the minions and verify everything is working properly.
+7. The installer associates a floating IP address with the Kubernetes master node. You can find the floating IP in your instances Horizon panel or by using the nova list command. The next step is use kubectl to explore and inspect the cluster.
 
-	**Linux**
+		**Mac & Linux & Windows**
 
-		ssh -i kube-key core@15.125.106.149
+			kubectl cluster-info --server=http://15.125.106.149:8080
+			Kubernetes master is running at http://15.125.106.149:8080
 
-		kubecfg get nodess 
-		
-		Results:
-	
-			$ ssh -i ../kube-key core@15.125.106.149
-			
-			The authenticity of host '15.126.200.248 (15.126.200.248)' can't be established.
-			RSA key fingerprint is fe:b1:a0:6f:3b:60:e7:3c:26:30:98:4a:86:24:99:d8.
-			Are you sure you want to continue connecting (yes/no)? yes
-			Warning: Permanently added '15.126.200.248' (RSA) to the list of known hosts.
-			CoreOS (stable)
-			core@kube-master ~ $ kubecfg get nodes
+			kubectl version --server=http://15.125.106.149:8080
+			Client Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
+			Server Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
+
+			kubectl get nodes --server=http://15.125.106.149:8080
 			NAME            LABELS                                 STATUS
 			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
 			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
-	
-	**MacOS**
-
-		ssh -i kube-key core@15.125.106.149
-			
-		kubecfg get nodes
-		
-		Results:
-
-			$ ssh -i ../kube-key core15.125.106.149
-			
-			The authenticity of host '15.126.200.248 (15.126.200.248)' can't be established.
-			RSA key fingerprint is fe:b1:a0:6f:3b:60:e7:3c:26:30:98:4a:86:24:99:d8.
-			Are you sure you want to continue connecting (yes/no)? yes
-			Warning: Permanently added '15.126.200.248' (RSA) to the list of known hosts.
-			CoreOS (stable)
-			core@kube-master ~ $ kubecfg get nodes
-			NAME            LABELS                                 STATUS
-			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
-			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
-	
-	**Windows**
-	
-	You will need an ssh client such as cywin for this.
-
-		>ssh -i my_key.pem core@15.125.106.149 "/opt/bin/kubectl get nodes"
-
-		Results:
-
-			>ssh -i my_key.pem core@15.125.106.149 "/opt/bin/kubectl get nodes"
-			Warning: Permanently added '15.125.106.149' (ED25519) to the list of known hosts.
-			NAME            LABELS                                 STATUS
-			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
-			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
-
 
 8. After verifying all the nodes are there, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
 ) to your Kubernetes cluster!
