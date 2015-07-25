@@ -18,8 +18,8 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Linux**
 	
-	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/linux/README.md).
-	
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/linux/README.md).
+
 	Manual installation steps:
 
 		mkdir -p /usr/local/kubernetes
@@ -43,7 +43,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	
 	**Mac**
 	
-	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/darwin/README.md).
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/darwin/README.md).
 	
 	Manual installation steps:
 	
