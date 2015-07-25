@@ -207,21 +207,21 @@ The installer process runs on your workstation, provisioning the cluster remotel
 	2015/07/23 12:06:55 associate IP         - kube-master COMPLETED
 	```
 
-7. The installer associates a floating IP address with the Kubernetes master node. You can find the floating IP in your instances Horizon panel or by using the nova list command. The next step is use kubectl to explore and inspect the cluster.
+7. The installer associates a floating IP address with the Kubernetes master node. You can find the floating IP in list if server instances in the Horizon panel or by using the nova list command. The next step is use kubectl to explore and inspect the cluster.
 
-		**Mac & Linux & Windows**
+	**Mac & Linux & Windows**
 
-			kubectl cluster-info --server=http://15.125.106.149:8080
-			Kubernetes master is running at http://15.125.106.149:8080
-
-			kubectl version --server=http://15.125.106.149:8080
-			Client Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
-			Server Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
-
-			kubectl get nodes --server=http://15.125.106.149:8080
-			NAME            LABELS                                 STATUS
-			192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
-			192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
+		kubectl cluster-info --server=http://15.125.106.149:8080
+		Kubernetes master is running at http://15.125.106.149:8080
+		
+		kubectl version --server=http://15.125.106.149:8080
+		Client Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
+		Server Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
+		
+		kubectl get nodes --server=http://15.125.106.149:8080
+		NAME            LABELS                                 STATUS
+		192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
+		192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 
 8. After verifying all the nodes are there, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
 ) to your Kubernetes cluster!
