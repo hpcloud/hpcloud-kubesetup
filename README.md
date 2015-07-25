@@ -68,7 +68,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Windows**
 	
-	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/windows/README.md).
+	Script based installation folllow these [instructions](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/setup/windows/README.md).
 	
 	Manual installation steps:
 	
