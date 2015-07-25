@@ -211,14 +211,14 @@ The installer process runs on your workstation, provisioning the cluster remotel
 
 	**Mac & Linux & Windows**
 
-		kubectl cluster-info --server=http://15.125.106.149:8080
+		**kubectl cluster-info --server=http://15.125.106.149:8080**
 		Kubernetes master is running at http://15.125.106.149:8080
-		
-		kubectl version --server=http://15.125.106.149:8080
+
+		**kubectl version --server=http://15.125.106.149:8080**
 		Client Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
 		Server Version: version.Info{Major:"1", Minor:"0", GitVersion:"v1.0.1", GitCommit:"6a5c06e3d1eb27a6310a09270e4a5fb1afa93e74", GitTreeState:"clean"}
-		
-		kubectl get nodes --server=http://15.125.106.149:8080
+
+		**kubectl get nodes --server=http://15.125.106.149:8080**
 		NAME            LABELS                                 STATUS
 		192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
 		192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
