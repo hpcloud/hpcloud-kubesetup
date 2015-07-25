@@ -1,24 +1,24 @@
 # ==============================================================================
-# kubernetes-tools-installer.ps1 
+# kubernetes-tools-install.ps1
 #
 # installs hpcloud-kubesetup.exe and Kubernetes kubectl.exe
 #
-# https://github.com/hpcloud/hpcloud-kubesetup/windows/kubernetes-tools-installer.ps1
+# https://github.com/hpcloud/hpcloud-kubesetup/windows/kubernetes-tools-install.ps1
 #
 # © Copyright 2015 Hewlett-Packard Development Company, L.P.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not use 
-# this file except in compliance with the License. You may obtain a copy of the 
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+# this file except in compliance with the License. You may obtain a copy of the
 # License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR 
-# CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+# Unless required by applicable law or agreed to in writing, software distributed
+# under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+# CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
 # ==============================================================================
-Write-Host "kubernetes-tools-installer.ps1`n"
+Write-Host "kubernetes-tools-install.ps1`n"
 
 $installPath = 'c:\kube'
 if (Test-Path -Path $installPath) {
@@ -42,7 +42,7 @@ param (
   $downloader.DownloadFile($url, $file)
 }
 
-Download-File "https://github.com/gertd/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip" (Join-Path $InstallPath 'hpcloud-kubesetup-windows.zip')
+Download-File "https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip" (Join-Path $InstallPath 'hpcloud-kubesetup-windows.zip')
 Download-File "https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe" (Join-Path $InstallPath 'kubectl.exe')
 
 Function Unzip-File {
