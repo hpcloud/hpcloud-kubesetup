@@ -42,7 +42,7 @@ param (
   $downloader.DownloadFile($url, $file)
 }
 
-Download-File "https://github.com/gertd/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip" (Join-Path $InstallPath 'hpcloud-kubesetup-windows.zip')
+Download-File "https://github.com/hpcloud/hpcloud-kubesetup/raw/master/bin/hpcloud-kubesetup-windows.zip" (Join-Path $InstallPath 'hpcloud-kubesetup-windows.zip')
 Download-File "https://storage.googleapis.com/kubernetes-release/release/v1.0.1/bin/windows/amd64/kubectl.exe" (Join-Path $InstallPath 'kubectl.exe')
 
 Function Unzip-File {
