@@ -6,7 +6,7 @@ To install hpcloud-kubesetup and Kubernetes kubectl on to MacOSX run the followi
 
 **From a bash shell:**
 
-    bash <(curl -Ls https://raw.githubusercontent.com/gertd/hpcloud-kubesetup/master/setup/darwin/kubernetes-tools-install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/setup/darwin/kubernetes-tools-install.sh)
 
 This will install the following files:
 * /usr/local/kubernetes/hpcloud-kubesetup-darwin.zip
@@ -25,4 +25,4 @@ To uninstall hpcloud-kubesetup and Kubernetes kubectl run the following command:
 
 **From a bash shell:**
 
-    bash <(curl -Ls https://raw.githubusercontent.com/gertd/hpcloud-kubesetup/master/setup/darwin/kubernetes-tools-uninstall.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/hpcloud/hpcloud-kubesetup/master/setup/darwin/kubernetes-tools-uninstall.sh)
