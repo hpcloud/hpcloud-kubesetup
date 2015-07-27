@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	compute "git.openstack.org/stackforge/golang-client.git/compute/v2"
@@ -31,16 +32,16 @@ import (
 var version = "0.0.3"
 
 var (
-	computeService compute.Service
-	networkService network.Service
-	imageService   image.Service
-	config         configContainer
-	keypair        compute.KeyPairResponse
-	netwrk         network.Response
-	subnets        []network.SubnetResponse
-	servers        []compute.Server
-	ports          []network.PortResponse
-	flavorMap      map[string]string
+	computeService  compute.Service
+	networkService  network.Service
+	imageService    image.Service
+	config          configContainer
+	keypair         compute.KeyPairResponse
+	netwrk          network.Response
+	subnets         []network.SubnetResponse
+	servers         []compute.Server
+	ports           []network.PortResponse
+	flavorMap       map[string]string
 )
 
 type configContainer struct {
@@ -265,49 +266,78 @@ func initTask(c *cli.Context) {
 
 	keypair, err = computeService.KeyPair(config.SSHKey)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get keypair", config.SSHKey, err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error", "get keypair", config.SSHKey, err.Error()))
 	}
 
 	var q = network.QueryParameters{Name: config.Network}
 	networks, err := networkService.QueryNetworks(q)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "get network by name", config.Network, err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error", "get network by name", config.Network, err.Error()))
+	}
+	if len(networks) == 0 {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "network not found", config.Network))
+	}
+	if len(networks) > 1 {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "multiple networks found with identical name", config.Network))
 	}
 
 	netwrk, err = networkService.Network(networks[0].ID)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error:", "getting network by id", networks[0].ID, err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s %s\n", "error", "getting network by id", networks[0].ID, err.Error()))
 	}
 	log.Printf("%-20s - %s\n", "network", netwrk.ID)
 
 	subnets, err = networkService.Subnets()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get subnets", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "get subnets", err.Error()))
 	}
 
 	ports, err = networkService.Ports()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get ports", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "get ports", err.Error()))
 	}
 
 	sort.Sort(PortByName(ports))
 
 	servers, err = computeService.Servers()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get servers", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "get servers", err.Error()))
 	}
 
 	sort.Sort(ServerByName(servers))
 
+	availibityZones, err := computeService.AvailabilityZones()
+	if err != nil {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "get availabilityzones", err.Error()))
+	}
+
+	azMap := make(map[string]string)
+	for _,p := range availibityZones {
+		azMap[strings.ToLower(p.ZoneName)] = p.ZoneName
+	}
+
+	if az, ok := azMap[strings.ToLower(config.AvailabilityZone)]; ok {
+		config.AvailabilityZone = az
+		} else {
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "availibityZone not found", config.AvailabilityZone))
+	}
+
 	flavors, err := computeService.Flavors()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error:", "get flavors", err.Error()))
+		log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "get flavors", err.Error()))
 	}
 
 	flavorMap = make(map[string]string)
 	for _, p := range flavors {
 		flavorMap[p.Name] = p.ID
 	}
+
+	for _, p := range config.Nodes {
+		if _, ok := flavorMap[p.VMSize]; !ok {
+			log.Fatal(fmt.Sprintf("%-20s - %s %s\n", "error", "flavor not found", p.VMSize))
+		}
+	}
+
 }
 
 func uninstallTask(c *cli.Context) {
