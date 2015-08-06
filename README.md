@@ -9,7 +9,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 1. Credentials to your HP Helion OpenStack environment or HP Helion Public Cloud account.
 2. CoreOS version 653.0.0 or later loaded in to OpenStack glance  [(steps)](https://coreos.com/os/docs/latest/booting-on-openstack.html). Note: when deploying to a HP Helion Public Cloud account this prerquisite is already satisfied.
 3. An OpenStack project/tenant to deploy your Kubernetes cluster to. Note: when deploying to a HP Helion Public Cloud account, you can use the existing tenant.
-3. A private network within the OpenStack project/tenant, providingt network isolation [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh).
+3. A private network within the OpenStack project/tenant, providing network isolation [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/create-private-network.sh).
 4. Ingress TCP communication over ports 22 (SSH), 80, 443 and 8080 (kube-apiserver) by adding these rulese to the default OpenStack security group within the project [(steps)](https://github.com/hpcloud/hpcloud-kubesetup/blob/master/scripts/update-default-securitygroup.sh)
 5. A Linux, Mac, or Windows workstation with internet connectivity and connectivity to your HP Helion OpenStack environment.
 
