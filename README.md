@@ -224,7 +224,7 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
 		
 
-	Alternatively for Mac & Linuxyou can setup a secure SSH tunel between the kubectl client and the kube-apiserver, this prevents from having to provide the --server parameter on each call. The confige the SSH tunel use the following command:
+	Alternatively for Mac & Linux you can setup a secure SSH tunel between the kubectl client and the kube-apiserver, this prevents from having to provide the --server parameter on each call. The confige the SSH tunel use the following command:
 	
 		ssh -f -nNT -L 8080:127.0.0.1:8080 core@<master-public-ip>
 		
@@ -233,16 +233,6 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		NAME         LABELS                                    SELECTOR   IP(S)        PORT(S)
 		kubernetes   component=apiserver,provider=kubernetes   <none>     10.100.0.1   443/TCP
 
-	Alternative for Windows you can SSH (cygwin) into the master cluster and do the commands directly without the --server parameter. To SSH use the following command:
-	
-		ssh -i <key path> core@<master-public-ip> 
-		
-		ssh -i C:\mykeys\key.pem core@15.125.106.149
-		
-		core@kube-master ~ $  kubectl get services
-		NAME         LABELS                                    SELECTOR   IP(S)        PORT(S)
-		kubernetes   component=apiserver,provider=kubernetes   <none>     10.100.0.1   443/TCP
-	
 8. After verifying all the nodes are there, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
 ) to your Kubernetes cluster!
 
