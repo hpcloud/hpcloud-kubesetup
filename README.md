@@ -233,7 +233,17 @@ The installer process runs on your workstation, provisioning the cluster remotel
 		NAME         LABELS                                    SELECTOR   IP(S)        PORT(S)
 		kubernetes   component=apiserver,provider=kubernetes   <none>     10.100.0.1   443/TCP
 
-8. After verifying all the nodes are there, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
+8. After verifying all the nodes are there, optionally create a context and use it, so that kubectl can be used without specifying the server on every call.  
+
+		$ kubectl config set-cluster hpcloud --server=http://15.125.106.149:8080
+		$ kubectl config set-context hpcloud --cluster=hpcloud
+		$ kubectl config use-context hpcloud
+		$ kubectl get nodes
+		NAME            LABELS                                 STATUS
+		192.168.1.141   kubernetes.io/hostname=192.168.1.141   Ready
+		192.168.1.142   kubernetes.io/hostname=192.168.1.142   Ready
+
+9. After verifying the current kubectl context is set correctly, you are ready to rock and roll. The next step will be to deploy a [sample application](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/examples/guestbook/README.md
 ) to your Kubernetes cluster!
 
 Happy containerizing!
